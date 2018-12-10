@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 //! A server that tells clients what time it is and where they are in the world.
 
 #![deny(missing_docs)]
@@ -29,7 +31,7 @@ fn main() {
 
     let geoip = actix::SyncArbiter::start(1, || {
         let geoip_path: path::PathBuf = "./GeoLite2-Country.mmdb".into();
-        let reader = maxminddb::Reader::open(&geoip_path).expect(&format!("Could not open geoip database at {:?}", geoip_path));
+        let reader = maxminddb::Reader::open(&geoip_path).unwrap_or_else(|err| panic!(format!("Could not open geoip database at {:?}: {}", geoip_path, err)));
         GeoIpActor { reader }
     });
 
@@ -44,13 +46,13 @@ fn main() {
         println!("started server on re-used file descriptor");
         server.listen(listener)
     } else {
-        let host = env::var("HOST").unwrap_or("127.0.0.1".to_string());
-        let port = env::var("PORT").unwrap_or("8080".to_string());
+        let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
         let addr = format!("{}:{}", host, port);
         println!("started server on https://{}:{}", host, port);
         server
             .bind(&addr)
-            .expect(&format!("Couldn't listen on {}", &addr))
+            .unwrap_or_else(|err| panic!(format!("Couldn't listen on {}: {}", &addr, err)))
     };
 
     server.start();
