@@ -4,14 +4,14 @@
 
 #![deny(missing_docs)]
 
-use actix_web::{App, HttpRequest, HttpResponse, http};
+use actix_web::{http, App, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
+use futures::Future;
 use listenfd::ListenFd;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{env, fmt, net::IpAddr, process, path};
-use futures::Future;
+use std::{env, fmt, net::IpAddr, path, process};
 
 struct State {
     geoip: actix::Addr<GeoIpActor>,
@@ -31,18 +31,28 @@ fn main() {
 
     let geoip = actix::SyncArbiter::start(1, || {
         let geoip_path: path::PathBuf = "./GeoLite2-Country.mmdb".into();
-        let reader = maxminddb::Reader::open(&geoip_path).unwrap_or_else(|err| panic!(format!("Could not open geoip database at {:?}: {}", geoip_path, err)));
+        let reader = maxminddb::Reader::open(&geoip_path).unwrap_or_else(|err| {
+            panic!(format!(
+                "Could not open geoip database at {:?}: {}",
+                geoip_path, err
+            ))
+        });
         GeoIpActor { reader }
     });
 
     let server = actix_web::server::new(move || {
-        App::with_state(State { geoip: geoip.clone() })
-            .resource("/", |r| r.get().f(index))
+        App::with_state(State {
+            geoip: geoip.clone(),
+        })
+        .resource("/", |r| r.get().f(index))
     });
 
     // Re-use a passed file descriptor, or create a new one to listen on.
     let mut listenfd = ListenFd::from_env();
-    let server = if let Some(listener) = listenfd.take_tcp_listener(0).expect("Could not get TCP listener") {
+    let server = if let Some(listener) = listenfd
+        .take_tcp_listener(0)
+        .expect("Could not get TCP listener")
+    {
         println!("started server on re-used file descriptor");
         server.listen(listener)
     } else {
@@ -62,11 +72,21 @@ fn main() {
 impl From<MaxMindDBError> for ClassifyError {
     fn from(error: MaxMindDBError) -> Self {
         match error {
-            MaxMindDBError::AddressNotFoundError(msg) => ClassifyError { message: format!("AddressNotFound: {}", msg) },
-            MaxMindDBError::InvalidDatabaseError(msg) => ClassifyError { message: format!("InvalidDatabaseError: {}", msg) },
-            MaxMindDBError::IoError(msg) => ClassifyError { message: format!("IoError: {}", msg) },
-            MaxMindDBError::MapError(msg) => ClassifyError { message: format!("MapError: {}", msg) },
-            MaxMindDBError::DecodingError(msg) => ClassifyError { message: format!("DecodingError: {}", msg) },
+            MaxMindDBError::AddressNotFoundError(msg) => ClassifyError {
+                message: format!("AddressNotFound: {}", msg),
+            },
+            MaxMindDBError::InvalidDatabaseError(msg) => ClassifyError {
+                message: format!("InvalidDatabaseError: {}", msg),
+            },
+            MaxMindDBError::IoError(msg) => ClassifyError {
+                message: format!("IoError: {}", msg),
+            },
+            MaxMindDBError::MapError(msg) => ClassifyError {
+                message: format!("MapError: {}", msg),
+            },
+            MaxMindDBError::DecodingError(msg) => ClassifyError {
+                message: format!("DecodingError: {}", msg),
+            },
         }
     }
 }
@@ -83,12 +103,11 @@ impl actix::Handler<CountryForIp> for GeoIpActor {
     type Result = Result<Option<geoip2::Country>, ClassifyError>;
 
     fn handle(&mut self, msg: CountryForIp, _: &mut Self::Context) -> Self::Result {
-        self.reader.lookup(msg.ip)
-            .or_else(|err| {
-                match err {
-                    MaxMindDBError::AddressNotFoundError(_) => Ok(None),
-                    _ => Err(err),
-                }
+        self.reader
+            .lookup(msg.ip)
+            .or_else(|err| match err {
+                MaxMindDBError::AddressNotFoundError(_) => Ok(None),
+                _ => Err(err),
             })
             .map_err(|err| err.into())
     }
@@ -163,12 +182,17 @@ impl Default for ClientClassification {
     }
 }
 
-fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item=HttpResponse, Error=ClassifyError>> {
-    let ip_res: Result<IpAddr, ClassifyError> = req.connection_info().remote()
-        .ok_or(ClassifyError { message: "no ip".to_string() })
+fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error = ClassifyError>> {
+    let ip_res: Result<IpAddr, ClassifyError> = req
+        .connection_info()
+        .remote()
+        .ok_or(ClassifyError {
+            message: "no ip".to_string(),
+        })
         .and_then(|remote| {
-            remote.parse()
-                .map_err(|err| ClassifyError::from(format!("IP ParseError for remote '{}'", remote), err))
+            remote.parse().map_err(|err| {
+                ClassifyError::from(format!("IP ParseError for remote '{}'", remote), err)
+            })
         });
     let ip: IpAddr = match ip_res {
         Ok(v) => v,
@@ -177,25 +201,27 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item=HttpResponse, Error=Cl
         }
     };
 
-    Box::new(req.state().geoip.send(CountryForIp { ip })
-        .and_then(move |country| {
-            let mut classification = ClientClassification::default();
-            match country {
-                Ok(country) => {
-                    classification.country = country.clone();
-                    Ok(
-                        HttpResponse::Ok()
-                        .header(http::header::CACHE_CONTROL, "max-age=0, no-cache, no-store, must-revalidate")
-                        .json(classification)
-                    )
-                },
-                Err(err) => {
-                    Ok(
-                        HttpResponse::InternalServerError().body(format!("{}", err))
-                    )
+    Box::new(
+        req.state()
+            .geoip
+            .send(CountryForIp { ip })
+            .and_then(move |country| {
+                let mut classification = ClientClassification::default();
+                match country {
+                    Ok(country) => {
+                        classification.country = country.clone();
+                        Ok(HttpResponse::Ok()
+                            .header(
+                                http::header::CACHE_CONTROL,
+                                "max-age=0, no-cache, no-store, must-revalidate",
+                            )
+                            .json(classification))
+                    }
+                    Err(err) => Ok(HttpResponse::InternalServerError().body(format!("{}", err))),
                 }
-            }
-        })
-        .map_err(|err| ClassifyError { message: format!("Future failure: {}", err) })
+            })
+            .map_err(|err| ClassifyError {
+                message: format!("Future failure: {}", err),
+            }),
     )
 }
