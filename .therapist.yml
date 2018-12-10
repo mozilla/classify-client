@@ -1,0 +1,5 @@
+actions:
+  rustfmt:
+    run: cargo fmt -- --unstable-features --check --skip-children {files}
+    fix: cargo fmt -- --unstable-features --skip-children {files}
+    include: "*.rs"

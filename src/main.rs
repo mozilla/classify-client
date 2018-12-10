@@ -197,17 +197,3 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item=HttpResponse, Error=Cl
         .map_err(|err| ClassifyError { message: format!("Future failure: {}", err) })
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use actix_web::{http::StatusCode, test};
-    use std::default::Default;
-
-    #[test]
-    fn test_index() {
-        let req = test::TestRequest::default();
-        let res = req.run(&index).unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-}
