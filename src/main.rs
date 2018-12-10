@@ -40,19 +40,20 @@ fn main() {
 
     // Re-use a passed file descriptor, or create a new one to listen on.
     let mut listenfd = ListenFd::from_env();
-    let server = if let Some(listener) = listenfd.take_tcp_listener(0).unwrap() {
+    let server = if let Some(listener) = listenfd.take_tcp_listener(0).expect("Could not get TCP listener") {
+        println!("started server on re-used file descriptor");
         server.listen(listener)
     } else {
         let host = env::var("HOST").unwrap_or("127.0.0.1".to_string());
         let port = env::var("PORT").unwrap_or("8080".to_string());
         let addr = format!("{}:{}", host, port);
+        println!("started server on https://{}:{}", host, port);
         server
             .bind(&addr)
             .expect(&format!("Couldn't listen on {}", &addr))
     };
 
     server.start();
-    println!("started server");
     sys.run();
 }
 
@@ -161,17 +162,18 @@ impl Default for ClientClassification {
 }
 
 fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item=HttpResponse, Error=ClassifyError>> {
-    let ip: IpAddr = req.connection_info().remote()
+    let ip_res: Result<IpAddr, ClassifyError> = req.connection_info().remote()
         .ok_or(ClassifyError { message: "no ip".to_string() })
         .and_then(|remote| {
-            let ip = if remote.contains(":") {
-                remote.split(":").next().unwrap()
-            } else {
-                remote
-            };
-            ip.parse().map_err(|err| ClassifyError::from("ParseError", err))
-        })
-        .unwrap();
+            remote.parse()
+                .map_err(|err| ClassifyError::from(format!("IP ParseError for remote '{}'", remote), err))
+        });
+    let ip: IpAddr = match ip_res {
+        Ok(v) => v,
+        Err(err) => {
+            return Box::new(futures::future::err(err));
+        }
+    };
 
     Box::new(req.state().geoip.send(CountryForIp { ip })
         .and_then(move |country| {
