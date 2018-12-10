@@ -7,6 +7,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install tools
+          command: |
+            rustup component add rustfmt
+            rustup component add clippy
+      - run:
           name: Check
           command: cargo check --all-targets --all-features
       - run:
