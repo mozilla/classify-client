@@ -11,7 +11,6 @@ chrono = { version = "^0.4", features = ["serde"] }
 ctrlc = "^3.1.1"
 futures = "*"
 lazy_static = "^1.2.0"
-listenfd = "^0.3"
 maxminddb = "^0.11.0"
 serde = "^1.0.80"
 serde_derive = "^1.0.80"
