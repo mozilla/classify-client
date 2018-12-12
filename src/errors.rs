@@ -58,3 +58,15 @@ impl From<MaxMindDBError> for ClassifyError {
         }
     }
 }
+
+impl From<actix_web::http::header::ToStrError> for ClassifyError {
+    fn from(error: actix_web::http::header::ToStrError) -> Self {
+        Self::from_source("ToStrError", error)
+    }
+}
+
+impl From<std::net::AddrParseError> for ClassifyError {
+    fn from(error: std::net::AddrParseError) -> Self {
+        Self::from_source("AddrParseError", error)
+    }
+}

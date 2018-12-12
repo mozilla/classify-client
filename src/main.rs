@@ -56,7 +56,7 @@ fn main() {
         println!("started server on re-used file descriptor");
         server.listen(listener)
     } else {
-        let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let host = env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
         let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
         let addr = format!("{}:{}", host, port);
         println!("started server on https://{}:{}", host, port);
@@ -139,17 +139,39 @@ impl Default for ClientClassification {
     }
 }
 
+/// Determine the IP address of the client making a request, based on network
+/// information and headers.
+fn get_client_ip<S>(request: &HttpRequest<S>) -> Result<IpAddr, ClassifyError> {
+    // Actix has a method to do this, but it returns a string, and doesn't strip
+    // off ports if present, so it is difficult to use.
+
+    if let Some(x_forwarded_for) = request.headers().get("X-Forwarded-For") {
+        let ips: Vec<_> = x_forwarded_for
+            .to_str()?
+            .split(',')
+            .map(|ip| ip.trim())
+            .collect();
+        if ips.len() == 1 {
+            return Ok(ips[0].parse()?);
+        } else if ips.len() > 1 {
+            // the last item is probably a google load balancer, strip that off, use the second-to-last item.
+            return Ok(ips[ips.len() - 2].parse()?);
+        }
+        // 0 items is an empty header, and weird. fall back to peer address detection
+    }
+
+    // No headers were present, so use the peer address directly
+    if let Some(peer_addr) = request.peer_addr() {
+        return Ok(peer_addr.ip());
+    }
+
+    Err(ClassifyError::new("Could not determine IP"))
+}
+
 fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error = ClassifyError>> {
-    let ip_res: Result<IpAddr, ClassifyError> = req
-        .connection_info()
-        .remote()
-        .ok_or_else(|| ClassifyError::new("no ip"))
-        .and_then(|remote| {
-            remote.parse().map_err(|err| {
-                ClassifyError::from_source(format!("IP ParseError for remote '{}'", remote), err)
-            })
-        });
-    let ip: IpAddr = match ip_res {
+    // TODO this is the sort of thing that the try operator (`?`) is supposed to
+    // be for. Is it possible to use the try operator with `Box<dyn Future<_>>`?
+    let ip = match get_client_ip(req) {
         Ok(v) => v,
         Err(err) => {
             return Box::new(futures::future::err(err));
