@@ -11,7 +11,7 @@ use listenfd::ListenFd;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{env, fmt, net::IpAddr, path, process};
+use std::{env, fmt, net::IpAddr, path::PathBuf, process};
 
 struct State {
     geoip: actix::Addr<GeoIpActor>,
@@ -22,22 +22,18 @@ fn main() {
     // PID 1 in Docker it doesn't respond to SIGINT. This prevents
     // ctrl-c from stopping a docker container running this
     // program. Handle SIGINT (aka ctrl-c) to fix this problem.
-    ctrlc::set_handler(move || {
-        process::exit(0);
-    })
-    .expect("error setting ctrl-c handler");
+    ctrlc::set_handler(move || process::exit(0)).expect("error setting ctrl-c handler");
 
     let sys = actix::System::new("classify-client");
 
     let geoip = actix::SyncArbiter::start(1, || {
-        let geoip_path: path::PathBuf = "./GeoLite2-Country.mmdb".into();
-        let reader = maxminddb::Reader::open(&geoip_path).unwrap_or_else(|err| {
+        let geoip_path = "./GeoLite2-Country.mmdb";
+        GeoIpActor::from_path(&geoip_path).unwrap_or_else(|err| {
             panic!(format!(
                 "Could not open geoip database at {:?}: {}",
                 geoip_path, err
             ))
-        });
-        GeoIpActor { reader }
+        })
     });
 
     let server = actix_web::server::new(move || {
@@ -93,6 +89,14 @@ impl From<MaxMindDBError> for ClassifyError {
 
 struct GeoIpActor {
     reader: maxminddb::OwnedReader<'static>,
+}
+
+impl GeoIpActor {
+    fn from_path<P: Into<PathBuf>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        let path = path.into();
+        let reader = maxminddb::Reader::open(path)?;
+        Ok(Self { reader })
+    }
 }
 
 impl<'a> actix::Actor for GeoIpActor {
