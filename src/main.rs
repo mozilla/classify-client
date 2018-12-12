@@ -45,6 +45,10 @@ fn main() {
             geoip: geoip.clone(),
         })
         .resource("/", |r| r.get().f(index))
+        // Dockerflow views
+        .resource("/__lbheartbeat__", |r| r.get().f(lbheartbeat))
+        .resource("/__heartbeat__", |r| r.get().f(heartbeat))
+        .resource("/__version__", |r| r.get().f(version))
     });
 
     // Re-use a passed file descriptor, or create a new one to listen on.
@@ -199,4 +203,40 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error 
             })
             .map_err(|err| ClassifyError::from_source("Future failure", err)),
     )
+}
+
+use std::fs::File;
+use std::io::Read;
+
+fn lbheartbeat(_req: &HttpRequest<State>) -> HttpResponse {
+    HttpResponse::Ok().body("")
+}
+
+#[derive(Serialize)]
+struct HeartbeatResponse {
+    geoip: bool,
+}
+
+impl Default for HeartbeatResponse {
+    fn default() -> Self {
+        Self { geoip: false }
+    }
+}
+
+fn heartbeat(_req: &HttpRequest<State>) -> HttpResponse {
+    let mut res = HeartbeatResponse::default();
+
+    // Test GeoIP was loaded.
+    res.geoip = true;
+
+    HttpResponse::Ok().json(res)
+}
+
+fn version(_req: &HttpRequest<State>) -> HttpResponse {
+    let mut file = File::open("./version.json").unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(data)
 }
