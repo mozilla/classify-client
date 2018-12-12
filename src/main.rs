@@ -11,7 +11,11 @@ use listenfd::ListenFd;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{env, fmt, net::IpAddr, path::PathBuf, process};
+use std::{env, net::IpAddr, path::PathBuf, process};
+
+use crate::errors::ClassifyError;
+
+mod errors;
 
 struct State {
     geoip: actix::Addr<GeoIpActor>,
@@ -65,28 +69,6 @@ fn main() {
     sys.run();
 }
 
-impl From<MaxMindDBError> for ClassifyError {
-    fn from(error: MaxMindDBError) -> Self {
-        match error {
-            MaxMindDBError::AddressNotFoundError(msg) => ClassifyError {
-                message: format!("AddressNotFound: {}", msg),
-            },
-            MaxMindDBError::InvalidDatabaseError(msg) => ClassifyError {
-                message: format!("InvalidDatabaseError: {}", msg),
-            },
-            MaxMindDBError::IoError(msg) => ClassifyError {
-                message: format!("IoError: {}", msg),
-            },
-            MaxMindDBError::MapError(msg) => ClassifyError {
-                message: format!("MapError: {}", msg),
-            },
-            MaxMindDBError::DecodingError(msg) => ClassifyError {
-                message: format!("DecodingError: {}", msg),
-            },
-        }
-    }
-}
-
 struct GeoIpActor {
     reader: maxminddb::OwnedReader<'static>,
 }
@@ -125,35 +107,6 @@ impl actix::Message for CountryForIp {
     type Result = Result<Option<geoip2::Country>, ClassifyError>;
 }
 
-#[derive(Debug, Serialize)]
-struct ClassifyError {
-    message: String,
-}
-
-impl ClassifyError {
-    fn from<S: fmt::Display, E: fmt::Display>(source: S, err: E) -> Self {
-        ClassifyError {
-            message: format!("{}: {}", source, err),
-        }
-    }
-}
-
-// Use default implementation of Error
-impl std::error::Error for ClassifyError {}
-
-impl fmt::Display for ClassifyError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{:?}", self)?;
-        Ok(())
-    }
-}
-
-impl actix_web::error::ResponseError for ClassifyError {
-    fn error_response(&self) -> HttpResponse {
-        HttpResponse::InternalServerError().json(self)
-    }
-}
-
 #[derive(Serialize)]
 struct ClientClassification {
     request_time: DateTime<Utc>,
@@ -190,12 +143,10 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error 
     let ip_res: Result<IpAddr, ClassifyError> = req
         .connection_info()
         .remote()
-        .ok_or(ClassifyError {
-            message: "no ip".to_string(),
-        })
+        .ok_or_else(|| ClassifyError::new("no ip"))
         .and_then(|remote| {
             remote.parse().map_err(|err| {
-                ClassifyError::from(format!("IP ParseError for remote '{}'", remote), err)
+                ClassifyError::from_source(format!("IP ParseError for remote '{}'", remote), err)
             })
         });
     let ip: IpAddr = match ip_res {
@@ -224,8 +175,6 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error 
                     Err(err) => Ok(HttpResponse::InternalServerError().body(format!("{}", err))),
                 }
             })
-            .map_err(|err| ClassifyError {
-                message: format!("Future failure: {}", err),
-            }),
+            .map_err(|err| ClassifyError::from_source("Future failure", err)),
     )
 }
