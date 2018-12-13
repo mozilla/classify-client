@@ -12,7 +12,7 @@ use futures::Future;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{net::IpAddr, path::PathBuf, process};
+use std::{net::IpAddr, path::PathBuf};
 
 use crate::{errors::ClassifyError, settings::Settings};
 
@@ -22,12 +22,6 @@ struct State {
 }
 
 fn main() {
-    // Rust doesn't have a ctrl-c handler itself, so when running as
-    // PID 1 in Docker it doesn't respond to SIGINT. This prevents
-    // ctrl-c from stopping a docker container running this
-    // program. Handle SIGINT (aka ctrl-c) to fix this problem.
-    ctrlc::set_handler(move || process::exit(0)).expect("error setting ctrl-c handler");
-
     let sys = actix::System::new("classify-client");
 
     let settings =
