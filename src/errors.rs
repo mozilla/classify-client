@@ -40,19 +40,19 @@ impl actix_web::error::ResponseError for ClassifyError {
 impl From<MaxMindDBError> for ClassifyError {
     fn from(error: MaxMindDBError) -> Self {
         match error {
-            MaxMindDBError::AddressNotFoundError(msg) => ClassifyError {
+            MaxMindDBError::AddressNotFoundError(msg) => Self {
                 message: format!("AddressNotFound: {}", msg),
             },
-            MaxMindDBError::InvalidDatabaseError(msg) => ClassifyError {
+            MaxMindDBError::InvalidDatabaseError(msg) => Self {
                 message: format!("InvalidDatabaseError: {}", msg),
             },
-            MaxMindDBError::IoError(msg) => ClassifyError {
+            MaxMindDBError::IoError(msg) => Self {
                 message: format!("IoError: {}", msg),
             },
-            MaxMindDBError::MapError(msg) => ClassifyError {
+            MaxMindDBError::MapError(msg) => Self {
                 message: format!("MapError: {}", msg),
             },
-            MaxMindDBError::DecodingError(msg) => ClassifyError {
+            MaxMindDBError::DecodingError(msg) => Self {
                 message: format!("DecodingError: {}", msg),
             },
         }
