@@ -31,7 +31,7 @@ fn main() {
     let sys = actix::System::new("classify-client");
 
     let settings =
-        Settings::load().unwrap_or_else(|err| panic!(format!("Could not load setting: {}", err)));
+        Settings::load().unwrap_or_else(|err| panic!(format!("Could not load settings: {}", err)));
 
     let geoip = {
         let path = settings.geoip_db_path.clone();
