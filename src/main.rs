@@ -6,13 +6,15 @@
 mod errors;
 mod settings;
 
-use actix_web::{http, App, HttpRequest, HttpResponse};
+use actix_web::{http, App, FutureResponse, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 use futures::Future;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{net::IpAddr, path::PathBuf, process};
+use std::fs::File;
+use std::io::Read;
+use std::{net::IpAddr, net::Ipv6Addr, path::PathBuf, process};
 
 use crate::{errors::ClassifyError, settings::Settings};
 
@@ -196,9 +198,6 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error 
     )
 }
 
-use std::fs::File;
-use std::io::Read;
-
 fn lbheartbeat(_req: &HttpRequest<State>) -> HttpResponse {
     HttpResponse::Ok().body("")
 }
@@ -214,13 +213,22 @@ impl Default for HeartbeatResponse {
     }
 }
 
-fn heartbeat(_req: &HttpRequest<State>) -> HttpResponse {
-    let mut res = HeartbeatResponse::default();
+fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
+    let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1));
 
-    // Test GeoIP was loaded.
-    res.geoip = true;
+    let ok = HttpResponse::Ok().json(HeartbeatResponse { geoip: true });
+    let fail = HttpResponse::ServiceUnavailable().json(HeartbeatResponse { geoip: false });
 
-    HttpResponse::Ok().json(res)
+    Box::new(
+        req.state()
+            .geoip
+            .send(CountryForIp { ip })
+            .from_err()
+            .and_then(|res| match res {
+                Ok(_) => Ok(ok),
+                Err(_) => Ok(fail),
+            }),
+    )
 }
 
 fn version(_req: &HttpRequest<State>) -> HttpResponse {
