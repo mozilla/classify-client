@@ -7,7 +7,6 @@
 use actix_web::{http, App, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 use futures::Future;
-use listenfd::ListenFd;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
@@ -41,32 +40,21 @@ fn main() {
         })
     });
 
+    let host = env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let addr = format!("{}:{}", host, port);
+
     let server = actix_web::server::new(move || {
         App::with_state(State {
             geoip: geoip.clone(),
         })
         .resource("/", |r| r.get().f(index))
-    });
-
-    // Re-use a passed file descriptor, or create a new one to listen on.
-    let mut listenfd = ListenFd::from_env();
-    let server = if let Some(listener) = listenfd
-        .take_tcp_listener(0)
-        .expect("Could not get TCP listener")
-    {
-        println!("started server on re-used file descriptor");
-        server.listen(listener)
-    } else {
-        let host = env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
-        let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
-        let addr = format!("{}:{}", host, port);
-        println!("started server on https://{}:{}", host, port);
-        server
-            .bind(&addr)
-            .unwrap_or_else(|err| panic!(format!("Couldn't listen on {}: {}", &addr, err)))
-    };
+    })
+    .bind(&addr)
+    .unwrap_or_else(|err| panic!(format!("Couldn't listen on {}: {}", &addr, err)));
 
     server.start();
+    println!("started server on https://{}:{}", host, port);
     sys.run();
 }
 
