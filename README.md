@@ -17,6 +17,14 @@ This project should run on the latest stable version of Rust. Unstable features 
 
 A GeoIP database is required. For development purposes, one can be obtained from [the Maxmind website](https://dev.maxmind.com/geoip/geoip2/geolite2/). The GeoLite2 Country database is recommended. It should be placed at the root of the repository.
 
+## Configuration
+
+Via environment variables:
+
+- `HOST`: host (default: `localhost`)
+- `PORT`: port number (default: `8080`)
+- `GEOIP_DB_PATH`: path to GeoIP database (default: `./GeoLite2-Country.mmdb`)
+
 ## Tests
 
 Tests can be run with Cargo as well

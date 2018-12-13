@@ -31,7 +31,8 @@ fn main() {
     let sys = actix::System::new("classify-client");
 
     let geoip = actix::SyncArbiter::start(1, || {
-        let geoip_path = "./GeoLite2-Country.mmdb";
+        let geoip_path =
+            env::var("GEOIP_DB_PATH").unwrap_or_else(|_| "./GeoLite2-Country.mmdb".to_string());
         GeoIpActor::from_path(&geoip_path).unwrap_or_else(|err| {
             panic!(format!(
                 "Could not open geoip database at {:?}: {}",
