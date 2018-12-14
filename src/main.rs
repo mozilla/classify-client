@@ -14,7 +14,7 @@ use serde::Serializer;
 use serde_derive::Serialize;
 use std::fs::File;
 use std::io::Read;
-use std::{net::IpAddr, net::Ipv6Addr, path::PathBuf, process};
+use std::{net::IpAddr, net::Ipv4Addr, path::PathBuf, process};
 
 use crate::{errors::ClassifyError, settings::Settings};
 
@@ -207,14 +207,8 @@ struct HeartbeatResponse {
     geoip: bool,
 }
 
-impl Default for HeartbeatResponse {
-    fn default() -> Self {
-        Self { geoip: false }
-    }
-}
-
 fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
-    let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1));
+    let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
     let ok = HttpResponse::Ok().json(HeartbeatResponse { geoip: true });
     let fail = HttpResponse::ServiceUnavailable().json(HeartbeatResponse { geoip: false });
