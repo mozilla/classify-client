@@ -6,19 +6,22 @@
 mod errors;
 mod settings;
 
-use actix_web::{http, App, HttpRequest, HttpResponse};
+use actix_web::{http, App, FutureResponse, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 use futures::Future;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{net::IpAddr, path::PathBuf, process};
+use std::fs::File;
+use std::io::Read;
+use std::{net::IpAddr, net::Ipv4Addr, path::PathBuf, process};
 
 use crate::{errors::ClassifyError, settings::Settings};
 
 #[derive(Clone)]
 struct State {
     geoip: actix::Addr<GeoIpActor>,
+    settings: settings::Settings,
 }
 
 fn main() {
@@ -45,11 +48,16 @@ fn main() {
         })
     };
 
-    let state = State { geoip };
+    let state = State { geoip, settings };
 
-    let addr = format!("{}:{}", settings.host, settings.port);
+    let addr = format!("{}:{}", state.settings.host, state.settings.port);
     let server = actix_web::server::new(move || {
-        App::with_state(state.clone()).resource("/", |r| r.get().f(index))
+        App::with_state(state.clone())
+            .resource("/", |r| r.get().f(index))
+            // Dockerflow views
+            .resource("/__lbheartbeat__", |r| r.get().f(lbheartbeat))
+            .resource("/__heartbeat__", |r| r.get().f(heartbeat))
+            .resource("/__version__", |r| r.get().f(version))
     })
     .bind(&addr)
     .unwrap_or_else(|err| panic!(format!("Couldn't listen on {}: {}", &addr, err)));
@@ -189,4 +197,50 @@ fn index(req: &HttpRequest<State>) -> Box<dyn Future<Item = HttpResponse, Error 
             })
             .map_err(|err| ClassifyError::from_source("Future failure", err)),
     )
+}
+
+fn lbheartbeat(_req: &HttpRequest<State>) -> HttpResponse {
+    HttpResponse::Ok().body("")
+}
+
+#[derive(Serialize)]
+struct HeartbeatResponse {
+    geoip: bool,
+}
+
+fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
+    let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
+
+    Box::new(
+        req.state()
+            .geoip
+            .send(CountryForIp { ip })
+            .and_then(|res| match res {
+                Ok(country_info) => country_info
+                    .and_then(|country_info| country_info.country)
+                    .and_then(|country| country.iso_code)
+                    .and_then(|iso_code| Some(Ok(iso_code == "US".to_string())))
+                    .unwrap_or(Ok(false)),
+                Err(_) => Ok(false),
+            })
+            .or_else(|_| Ok(false))
+            .and_then(|res| {
+                let mut resp = match res {
+                    true => HttpResponse::Ok(),
+                    false => HttpResponse::ServiceUnavailable(),
+                };
+                Ok(resp.json(HeartbeatResponse { geoip: res }))
+            }),
+    )
+}
+
+fn version(req: &HttpRequest<State>) -> HttpResponse {
+    let version_file = &req.state().settings.version_file;
+    // Read the file or deliberately fail with a 500 if missing.
+    let mut file = File::open(version_file).unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(data)
 }

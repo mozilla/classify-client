@@ -24,6 +24,7 @@ Via environment variables:
 - `HOST`: host (default: `localhost`)
 - `PORT`: port number (default: `8080`)
 - `GEOIP_DB_PATH`: path to GeoIP database (default: `./GeoLite2-Country.mmdb`)
+- `VERSION_FILE`: path to `version.json` file (default: `./version.json`)
 
 ## Tests
 
