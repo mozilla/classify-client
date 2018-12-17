@@ -215,7 +215,11 @@ fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
             .geoip
             .send(CountryForIp { ip })
             .and_then(|res| match res {
-                Ok(_) => Ok(true),
+                Ok(country_info) => country_info
+                    .and_then(|country_info| country_info.country)
+                    .and_then(|country| country.iso_code)
+                    .and_then(|iso_code| Some(Ok(iso_code == "US".to_string())))
+                    .unwrap_or(Ok(false)),
                 Err(_) => Ok(false),
             })
             .or_else(|_| Ok(false))
