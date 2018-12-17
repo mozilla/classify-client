@@ -210,17 +210,21 @@ struct HeartbeatResponse {
 fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
     let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
-    let ok = HttpResponse::Ok().json(HeartbeatResponse { geoip: true });
-    let fail = HttpResponse::ServiceUnavailable().json(HeartbeatResponse { geoip: false });
-
     Box::new(
         req.state()
             .geoip
             .send(CountryForIp { ip })
-            .from_err()
             .and_then(|res| match res {
-                Ok(_) => Ok(ok),
-                Err(_) => Ok(fail),
+                Ok(_) => Ok(true),
+                Err(_) => Ok(false),
+            })
+            .or_else(|_| Ok(false))
+            .and_then(|res| {
+                let mut resp = match res {
+                    true => HttpResponse::Ok(),
+                    false => HttpResponse::ServiceUnavailable(),
+                };
+                Ok(resp.json(HeartbeatResponse { geoip: res }))
             }),
     )
 }
