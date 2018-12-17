@@ -21,6 +21,7 @@ use crate::{errors::ClassifyError, settings::Settings};
 #[derive(Clone)]
 struct State {
     geoip: actix::Addr<GeoIpActor>,
+    settings: settings::Settings,
 }
 
 fn main() {
@@ -47,9 +48,9 @@ fn main() {
         })
     };
 
-    let state = State { geoip };
+    let state = State { geoip, settings };
 
-    let addr = format!("{}:{}", settings.host, settings.port);
+    let addr = format!("{}:{}", state.settings.host, state.settings.port);
     let server = actix_web::server::new(move || {
         App::with_state(state.clone())
             .resource("/", |r| r.get().f(index))
@@ -233,8 +234,10 @@ fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
     )
 }
 
-fn version(_req: &HttpRequest<State>) -> HttpResponse {
-    let mut file = File::open("./version.json").unwrap();
+fn version(req: &HttpRequest<State>) -> HttpResponse {
+    let version_file = &req.state().settings.version_file;
+    // Read the file or deliberately fail with a 500 if missing.
+    let mut file = File::open(version_file).unwrap();
     let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
     HttpResponse::Ok()
