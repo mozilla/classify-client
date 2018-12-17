@@ -216,15 +216,16 @@ fn heartbeat(req: &HttpRequest<State>) -> FutureResponse<HttpResponse> {
                 Ok(country_info) => country_info
                     .and_then(|country_info| country_info.country)
                     .and_then(|country| country.iso_code)
-                    .and_then(|iso_code| Some(Ok(iso_code == "US".to_string())))
+                    .and_then(|iso_code| Some(Ok(iso_code == "US")))
                     .unwrap_or(Ok(false)),
                 Err(_) => Ok(false),
             })
             .or_else(|_| Ok(false))
             .and_then(|res| {
-                let mut resp = match res {
-                    true => HttpResponse::Ok(),
-                    false => HttpResponse::ServiceUnavailable(),
+                let mut resp = if res {
+                    HttpResponse::Ok()
+                } else {
+                    HttpResponse::ServiceUnavailable()
                 };
                 Ok(resp.json(HeartbeatResponse { geoip: res }))
             }),
