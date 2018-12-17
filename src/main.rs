@@ -12,7 +12,12 @@ use futures::Future;
 use maxminddb::{self, geoip2, MaxMindDBError};
 use serde::Serializer;
 use serde_derive::Serialize;
-use std::{fs::File, io:: Read, net::{IpAddr, Ipv4Addr}, path::PathBuf};
+use std::{
+    fs::File,
+    io::Read,
+    net::{IpAddr, Ipv4Addr},
+    path::PathBuf,
+};
 
 use crate::{errors::ClassifyError, settings::Settings};
 
