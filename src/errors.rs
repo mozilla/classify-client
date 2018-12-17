@@ -59,14 +59,17 @@ impl From<MaxMindDBError> for ClassifyError {
     }
 }
 
-impl From<actix_web::http::header::ToStrError> for ClassifyError {
-    fn from(error: actix_web::http::header::ToStrError) -> Self {
-        Self::from_source("ToStrError", error)
-    }
+macro_rules! impl_from_error {
+    ($error: ty, $desc: expr) => {
+        impl From<$error> for ClassifyError {
+            fn from(error: $error) -> Self {
+                Self::from_source($desc, error)
+            }
+        }
+    };
 }
 
-impl From<std::net::AddrParseError> for ClassifyError {
-    fn from(error: std::net::AddrParseError) -> Self {
-        Self::from_source("AddrParseError", error)
-    }
-}
+impl_from_error!(actix_web::http::header::ToStrError, "ToStrError");
+impl_from_error!(config::ConfigError, "ConfigError");
+impl_from_error!(std::net::AddrParseError, "AddrParseError");
+impl_from_error!(std::io::Error, "IoError");
