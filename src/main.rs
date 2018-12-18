@@ -3,6 +3,9 @@
 #![deny(clippy::all)]
 #![deny(missing_docs)]
 
+extern crate sentry;
+extern crate sentry_actix;
+
 mod errors;
 mod settings;
 
@@ -10,9 +13,12 @@ use actix_web::{http, App, FutureResponse, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 use futures::Future;
 use maxminddb::{self, geoip2, MaxMindDBError};
+use sentry_actix::SentryMiddleware;
 use serde::Serializer;
 use serde_derive::Serialize;
+
 use std::{
+    env,
     fs::File,
     io::Read,
     net::{IpAddr, Ipv4Addr},
@@ -33,6 +39,12 @@ fn main() {
     let settings =
         Settings::load().unwrap_or_else(|err| panic!(format!("Could not load settings: {}", err)));
 
+    if (!settings.sentry_dsn.is_empty()) {
+        let _guard = sentry::init(settings.sentry_dsn.clone());
+        env::set_var("RUST_BACKTRACE", "1");
+        sentry::integrations::panic::register_panic_handler();
+    }
+
     let geoip = {
         let path = settings.geoip_db_path.clone();
         actix::SyncArbiter::start(1, move || {
@@ -50,6 +62,7 @@ fn main() {
     let addr = format!("{}:{}", state.settings.host, state.settings.port);
     let server = actix_web::server::new(move || {
         App::with_state(state.clone())
+            .middleware(SentryMiddleware::new())
             .resource("/", |r| r.get().f(index))
             // Dockerflow views
             .resource("/__lbheartbeat__", |r| r.get().f(lbheartbeat))
