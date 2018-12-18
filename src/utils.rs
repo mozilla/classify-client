@@ -1,7 +1,7 @@
 use actix_web::HttpRequest;
 use std::net::IpAddr;
 
-use crate::{errors::ClassifyError, endpoints::EndpointState};
+use crate::{endpoints::EndpointState, errors::ClassifyError};
 
 pub trait RequestClientIp<S> {
     /// Determine the IP address of the client making a request, based on network
@@ -20,14 +20,9 @@ pub trait RequestPathIps<'a, S> {
 
 impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
-        let trusted_proxy_ip_ranges: Vec<ipnet::IpNet> =
-            self.state().settings.trusted_proxy_ip_ranges()?;
+        let trusted_proxy_list: Vec<ipnet::IpNet> = self.state().settings.trusted_proxy_list()?;
 
-        let is_trusted_ip = |ip: &IpAddr| {
-            trusted_proxy_ip_ranges
-                .iter()
-                .any(|range| range.contains(ip))
-        };
+        let is_trusted_ip = |ip: &IpAddr| trusted_proxy_list.iter().any(|range| range.contains(ip));
 
         self.iter_path_ips()
             .skip_while(is_trusted_ip)

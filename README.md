@@ -25,6 +25,10 @@ Via environment variables:
 - `PORT`: port number (default: `8080`)
 - `GEOIP_DB_PATH`: path to GeoIP database (default: `./GeoLite2-Country.mmdb`)
 - `VERSION_FILE`: path to `version.json` file (default: `./version.json`)
+- `DEBUG`: A boolean that enables extra debugging options, such as a `/debug`
+    endpoint that shows internal server state.
+- `TRUSTED_PROXY_LIST`: A comma-separated list of CIDR ranges that trusted
+    proxies will be in. Supports both IPv4 and IPv6.
 
 ## Tests
 
