@@ -21,11 +21,11 @@ A GeoIP database is required. For development purposes, one can be obtained from
 
 Via environment variables:
 
-- `HOST`: host (default: `localhost`)
-- `PORT`: port number (default: `8080`)
-- `GEOIP_DB_PATH`: path to GeoIP database (default: `./GeoLite2-Country.mmdb`)
-- `SENTRY_DSN`: report errors to a Sentry instance (default: ` `)
-- `VERSION_FILE`: path to `version.json` file (default: `./version.json`)
+- `HOST`: host (default: `"localhost"`)
+- `PORT`: port number (default: `"8080"`)
+- `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoLite2-Country.mmdb"`)
+- `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
+- `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
 
 ## Tests
 
