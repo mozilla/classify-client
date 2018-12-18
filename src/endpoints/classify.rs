@@ -5,7 +5,9 @@ use maxminddb::{self, geoip2};
 use serde::Serializer;
 use serde_derive::Serialize;
 
-use crate::{errors::ClassifyError, geoip::CountryForIp, utils::RequestExt, views::ViewState};
+use crate::{
+    endpoints::EndpointState, errors::ClassifyError, geoip::CountryForIp, utils::RequestExt,
+};
 
 #[derive(Serialize)]
 struct ClientClassification {
@@ -40,7 +42,7 @@ impl Default for ClientClassification {
 }
 
 pub fn classify_client(
-    req: &HttpRequest<ViewState>,
+    req: &HttpRequest<EndpointState>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = ClassifyError>> {
     // TODO this is the sort of thing that the try operator (`?`) is supposed to
     // be for. Is it possible to use the try operator with `Box<dyn Future<_>>`?

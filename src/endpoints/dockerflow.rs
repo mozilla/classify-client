@@ -7,7 +7,7 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-use crate::{geoip::CountryForIp, views::ViewState};
+use crate::{endpoints::EndpointState, geoip::CountryForIp};
 
 pub fn lbheartbeat<S>(_req: &HttpRequest<S>) -> HttpResponse {
     HttpResponse::Ok().body("")
@@ -18,7 +18,7 @@ struct HeartbeatResponse {
     geoip: bool,
 }
 
-pub fn heartbeat(req: &HttpRequest<ViewState>) -> FutureResponse<HttpResponse> {
+pub fn heartbeat(req: &HttpRequest<EndpointState>) -> FutureResponse<HttpResponse> {
     let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
     Box::new(
@@ -45,7 +45,7 @@ pub fn heartbeat(req: &HttpRequest<ViewState>) -> FutureResponse<HttpResponse> {
     )
 }
 
-pub fn version(req: &HttpRequest<ViewState>) -> HttpResponse {
+pub fn version(req: &HttpRequest<EndpointState>) -> HttpResponse {
     let version_file = &req.state().settings.version_file;
     // Read the file or deliberately fail with a 500 if missing.
     let mut file = File::open(version_file).unwrap();
