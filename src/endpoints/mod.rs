@@ -1,4 +1,5 @@
 pub mod classify;
+pub mod debug;
 pub mod dockerflow;
 
 use crate::{geoip::GeoIpActor, settings::Settings};
