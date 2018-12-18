@@ -18,7 +18,6 @@ use serde::Serializer;
 use serde_derive::Serialize;
 
 use std::{
-    env,
     fs::File,
     io::Read,
     net::{IpAddr, Ipv4Addr},
@@ -39,11 +38,8 @@ fn main() {
     let settings =
         Settings::load().unwrap_or_else(|err| panic!(format!("Could not load settings: {}", err)));
 
-    if (!settings.sentry_dsn.is_empty()) {
-        let _guard = sentry::init(settings.sentry_dsn.clone());
-        env::set_var("RUST_BACKTRACE", "1");
-        sentry::integrations::panic::register_panic_handler();
-    }
+    let _guard = sentry::init(settings.sentry_dsn.clone());
+    sentry::integrations::panic::register_panic_handler();
 
     let geoip = {
         let path = settings.geoip_db_path.clone();
