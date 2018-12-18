@@ -6,7 +6,7 @@ use serde::Serializer;
 use serde_derive::Serialize;
 
 use crate::{
-    endpoints::EndpointState, errors::ClassifyError, geoip::CountryForIp, utils::RequestExt,
+    endpoints::EndpointState, errors::ClassifyError, geoip::CountryForIp, utils::RequestClientIp,
 };
 
 #[derive(Serialize)]
