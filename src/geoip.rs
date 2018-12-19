@@ -3,15 +3,18 @@ use std::{net::IpAddr, path::PathBuf};
 
 use crate::errors::ClassifyError;
 
+#[derive(Default)]
 pub struct GeoIpActor {
-    reader: maxminddb::OwnedReader<'static>,
+    reader: Option<maxminddb::OwnedReader<'static>>,
 }
 
 impl GeoIpActor {
     pub fn from_path<P: Into<PathBuf>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let path = path.into();
         let reader = maxminddb::Reader::open(path)?;
-        Ok(Self { reader })
+        Ok(Self {
+            reader: Some(reader),
+        })
     }
 }
 
@@ -24,6 +27,8 @@ impl actix::Handler<CountryForIp> for GeoIpActor {
 
     fn handle(&mut self, msg: CountryForIp, _: &mut Self::Context) -> Self::Result {
         self.reader
+            .as_ref()
+            .ok_or_else(|| ClassifyError::new("No geoip database available"))?
             .lookup(msg.ip)
             .or_else(|err| match err {
                 MaxMindDBError::AddressNotFoundError(_) => Ok(None),

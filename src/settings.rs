@@ -13,7 +13,7 @@ pub struct Settings {
     pub port: u16,
     // TODO This should be Vec<ipnet::IpNet>, but the config crate seemingly
     // can't deal with Vecs of non primitives?
-    trusted_proxy_list: Vec<String>,
+    pub trusted_proxy_list: Vec<String>,
     pub version_file: PathBuf,
 }
 
@@ -81,7 +81,7 @@ impl Settings {
 
         let rv: Settings = config.try_into()?;
 
-        // Test that settings is well formed
+        // Test that all settings are well formed
         rv.check()?;
 
         Ok(rv)

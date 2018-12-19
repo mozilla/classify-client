@@ -129,4 +129,70 @@ mod tests {
             "IPs in x-forwarded-for should be iterated in reverse order"
         );
     }
+
+    // Note that in all of the below tests, there aren't any networks involved,
+    // so the requests don't have a peer address. As such, the X-Forwarded-For
+    // header is the only thing considered to determine the client IP. Actix
+    // doesn't seem to provide a way to create a request with a mocked peer
+    // address.
+
+    #[test]
+    fn get_client_ip_no_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
+        let _sys = actix::System::new("test");
+        let state = EndpointState::default();
+        assert_eq!(
+            state.settings.trusted_proxy_list()?.len(),
+            0,
+            "Precondition: no trusted proxies by default"
+        );
+
+        let req = TestRequest::with_state(state)
+            .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+            .finish();
+
+        assert_eq!(
+            req.client_ip()?,
+            IpAddr::V4(Ipv4Addr::new(5, 6, 7, 8)),
+            "With no proxies, the right-most ip should be used"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
+        let _sys = actix::System::new("test");
+        let mut state = EndpointState::default();
+        state.settings.trusted_proxy_list = vec!["5.6.7.8/32".to_owned()];
+
+        let req = TestRequest::with_state(state)
+            .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+            .finish();
+
+        assert_eq!(
+            req.client_ip()?,
+            IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)),
+            "With one proxy, the second-from-the-right ip should be used"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
+        let _sys = actix::System::new("test");
+        let mut state = EndpointState::default();
+        state.settings.trusted_proxy_list = vec!["5.6.7.8/32".to_owned(), "1.2.3.4/32".to_owned()];
+
+        let req = TestRequest::with_state(state)
+            .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+            .finish();
+
+        assert!(
+            req.client_ip().is_err(),
+            "With too many proxies configured, no ip is"
+        );
+
+        Ok(())
+    }
 }

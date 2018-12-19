@@ -3,7 +3,7 @@ use maxminddb::{self, MaxMindDBError};
 use serde_derive::Serialize;
 use std::fmt;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct ClassifyError {
     message: String,
 }
