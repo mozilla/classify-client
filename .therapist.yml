@@ -1,7 +1,7 @@
 actions:
   rustfmt:
     run: cargo fmt -- --unstable-features --check --skip-children {files}
-    fix: cargo fmt -- --unstable-features --skip-children {files}
+    fix: cargo fmt -- {files}
     include: "*.rs"
   clippy:
     run: cargo clippy --all-targets --all-features
