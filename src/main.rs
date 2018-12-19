@@ -46,6 +46,7 @@ fn main() -> Result<(), ClassifyError> {
     let server = actix_web::server::new(move || {
         App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
+            // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
             // Dockerflow Endpoints
             .resource("/__lbheartbeat__", |r| r.get().f(dockerflow::lbheartbeat))
