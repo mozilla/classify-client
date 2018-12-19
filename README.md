@@ -15,7 +15,10 @@ This project should run on the latest stable version of Rust. Unstable features 
 
 ### GeoIP Database
 
-A GeoIP database is required. For development purposes, one can be obtained from [the Maxmind website](https://dev.maxmind.com/geoip/geoip2/geolite2/). The GeoLite2 Country database is recommended. It should be placed at the root of the repository.
+A GeoIP database will be downloaded automatically during the build.
+
+> Note: It relies on `curl` and `tar` commands. See `build.rs` for insights about how to obtain
+> the file manually in case the `.mmdb` file does not show up in the current folder.
 
 ## Configuration
 
