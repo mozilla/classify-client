@@ -7,6 +7,7 @@ pub struct Settings {
     pub host: String,
     pub port: u16,
     pub geoip_db_path: PathBuf,
+    pub human_logs: bool,
     pub version_file: PathBuf,
     pub sentry_dsn: String,
 }
@@ -17,6 +18,7 @@ impl Default for Settings {
             host: "[::]".to_owned(),
             port: 8080,
             geoip_db_path: "./GeoLite2-Country.mmdb".into(),
+            human_logs: false,
             version_file: "./version.json".into(),
             sentry_dsn: "".into(),
         }

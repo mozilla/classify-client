@@ -6,12 +6,14 @@
 mod endpoints;
 mod errors;
 mod geoip;
+mod logging;
 mod settings;
 mod utils;
 
 use actix_web::App;
 use sentry;
 use sentry_actix::SentryMiddleware;
+use slog;
 
 use crate::{
     endpoints::{classify, dockerflow, EndpointState},
@@ -40,12 +42,30 @@ fn main() -> Result<(), ClassifyError> {
         })
     };
 
-    let state = EndpointState { geoip, settings };
+    let app_log = if settings.human_logs {
+        logging::MozLogger::new_human()
+    } else {
+        logging::MozLogger::new_json("app")
+    };
+    let log_main = app_log.clone();
+
+    let request_log = if settings.human_logs {
+        logging::MozLogger::new_human()
+    } else {
+        logging::MozLogger::new_json("request.summary")
+    };
+
+    let state = EndpointState {
+        geoip,
+        settings,
+        log: app_log.clone(),
+    };
 
     let addr = format!("{}:{}", state.settings.host, state.settings.port);
     let server = actix_web::server::new(move || {
         App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
+            .middleware(request_log.clone())
             // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
             // Dockerflow Endpoints
@@ -56,7 +76,7 @@ fn main() -> Result<(), ClassifyError> {
     .bind(&addr)?;
 
     server.start();
-    println!("started server on https://{}", addr);
+    slog::info!(log_main.log, "started server on https://{}", addr);
     sys.run();
 
     Ok(())
