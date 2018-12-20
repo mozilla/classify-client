@@ -8,6 +8,7 @@ pub struct Settings {
     pub port: u16,
     pub geoip_db_path: PathBuf,
     pub version_file: PathBuf,
+    pub sentry_dsn: String,
 }
 
 impl Default for Settings {
@@ -17,6 +18,7 @@ impl Default for Settings {
             port: 8080,
             geoip_db_path: "./GeoLite2-Country.mmdb".into(),
             version_file: "./version.json".into(),
+            sentry_dsn: "".into(),
         }
     }
 }
