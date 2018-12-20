@@ -10,6 +10,8 @@ mod settings;
 mod utils;
 
 use actix_web::App;
+use sentry;
+use sentry_actix::SentryMiddleware;
 
 use crate::{
     endpoints::{classify, dockerflow, EndpointState},
@@ -22,6 +24,9 @@ fn main() -> Result<(), ClassifyError> {
     let sys = actix::System::new("classify-client");
 
     let settings = Settings::load()?;
+
+    let _guard = sentry::init(settings.sentry_dsn.clone());
+    sentry::integrations::panic::register_panic_handler();
 
     let geoip = {
         let path = settings.geoip_db_path.clone();
@@ -40,6 +45,8 @@ fn main() -> Result<(), ClassifyError> {
     let addr = format!("{}:{}", state.settings.host, state.settings.port);
     let server = actix_web::server::new(move || {
         App::with_state(state.clone())
+            .middleware(SentryMiddleware::new())
+            // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
             // Dockerflow Endpoints
             .resource("/__lbheartbeat__", |r| r.get().f(dockerflow::lbheartbeat))
