@@ -15,6 +15,7 @@ pub struct Settings {
     // can't deal with Vecs of non primitives?
     pub trusted_proxy_list: Vec<String>,
     pub version_file: PathBuf,
+    pub sentry_dsn: String,
 }
 
 impl Settings {
@@ -48,6 +49,7 @@ impl Default for Settings {
             port: 8080,
             trusted_proxy_list: Vec::new(),
             version_file: "./version.json".into(),
+            sentry_dsn: "".into(),
         }
     }
 }
