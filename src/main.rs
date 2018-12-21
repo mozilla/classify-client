@@ -68,6 +68,9 @@ fn main() -> Result<(), ClassifyError> {
             .middleware(request_log.clone())
             // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
+            .resource("/api/v1/classify_client/", |r| {
+                r.get().f(classify::classify_client)
+            })
             // Dockerflow Endpoints
             .resource("/__lbheartbeat__", |r| r.get().f(dockerflow::lbheartbeat))
             .resource("/__heartbeat__", |r| r.get().f(dockerflow::heartbeat))
