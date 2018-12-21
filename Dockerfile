@@ -13,7 +13,7 @@ FROM debian:stretch-slim as production
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libssl-1.1
+    libssl1.1
 
 WORKDIR /app
 
