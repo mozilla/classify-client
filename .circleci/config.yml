@@ -1,10 +1,17 @@
+# These environment variables must be set in CircleCI UI
+#
+# DOCKERHUB_REPO - docker hub repo, format: <username>/<repo>
+# DOCKER_EMAIL   - login info for docker hub
+# DOCKER_USER
+# DOCKER_PASS
+#
 version: 2.1
 
 orbs:
   codecov: codecov/codecov@1.0.1
 
 jobs:
-  build:
+  test:
     docker:
       - image: rust:1.31-stretch
     steps:
@@ -37,7 +44,26 @@ jobs:
           name: Test
           command: cargo test --release
       - run:
-          name: version.json
+          name: Coverage
+          command: cargo kcov
+      - codecov/upload:
+          file: target/cov/
+          flags: flags cargo_kcov
+
+  build:
+    docker:
+      - image: docker:18.03.0-ce
+    working_directory: /dockerflow
+    steps:
+      - run:
+          name: Install Docker build dependencies
+          command: apk add --no-cache openssh-client git
+
+      - checkout
+      - setup_remote_docker
+
+      - run:
+          name: Create a version.json
           command: |
             # create a version.json per https://github.com/mozilla-services/Dockerflow/blob/master/docs/version_object.md
             printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' \
@@ -47,8 +73,62 @@ jobs:
             "$CIRCLE_PROJECT_REPONAME" \
             "$CIRCLE_BUILD_URL" > version.json
       - run:
-          name: Coverage
-          command: cargo kcov
-      - codecov/upload:
-          file: target/cov/
-          flags: flags cargo_kcov
+          name: Build Docker image
+          command: docker build -t app:build .
+
+      # save the built docker container into CircleCI's cache. This is
+      # required since Workflows do not have the same remote docker instance.
+      - run:
+          name: docker save app:build
+          command: mkdir -p /cache; docker save -o /cache/docker.tar "app:build"
+      - save_cache:
+          key: v1-{{ .Branch }}-{{epoch}}
+          paths:
+            - /cache/docker.tar
+
+  publish:
+    docker:
+      - image: docker:18.03.0-ce
+    steps:
+      - setup_remote_docker
+      - restore_cache:
+          key: v1-{{.Branch}}
+      - run:
+          name: Restore Docker image cache
+          command: docker load -i /cache/docker.tar
+
+      - run:
+          name: Deploy to Dockerhub
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+                IMAGE="${DOCKERHUB_REPO}:latest"
+            elif  [ ! -z "${CIRCLE_TAG}" ]; then
+                IMAGE="${DOCKERHUB_REPO}:${CIRCLE_TAG}"
+            else
+                echo "Refusing to push to dockerhub for non-master branch without tag"
+                exit 1
+            fi
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker tag app:build $IMAGE
+            docker push $IMAGE
+
+workflows:
+  test:
+    jobs:
+      - test
+
+  build-publish:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/
+
+      - publish:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only: master
