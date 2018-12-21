@@ -65,7 +65,7 @@ jobs:
           paths:
             - /cache/docker.tar
 
-  deploy:
+  publish:
     docker:
       - image: docker:18.03.0-ce
     steps:
@@ -79,19 +79,17 @@ jobs:
       - run:
           name: Deploy to Dockerhub
           command: |
-            # deploy master
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              docker login -u $DOCKER_USER -p $DOCKER_PASS
-              docker tag app:build ${DOCKERHUB_REPO}:latest
-              docker push ${DOCKERHUB_REPO}:latest
+                IMAGE="${DOCKERHUB_REPO}:latest"
             elif  [ ! -z "${CIRCLE_TAG}" ]; then
-              # deploy a release tag...
-              docker login -u $DOCKER_USER -p $DOCKER_PASS
-              echo "${DOCKERHUB_REPO}:${CIRCLE_TAG}"
-              docker tag app:build "${DOCKERHUB_REPO}:${CIRCLE_TAG}"
-              docker images
-              docker push "${DOCKERHUB_REPO}:${CIRCLE_TAG}"
+                IMAGE="${DOCKERHUB_REPO}:${CIRCLE_TAG}"
+            else
+                echo "Refusing to push to dockerhub for non-master branch without tag"
+                exit 1
             fi
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker tag app:build $IMAGE
+            docker push $IMAGE
 
 workflows:
   version: 2
@@ -99,14 +97,14 @@ workflows:
     jobs:
       - test
 
-  build-deploy:
+  build-publish:
     jobs:
       - build:
           filters:
             tags:
               only: /.*/
 
-      - deploy:
+      - publish:
           requires:
             - build
           filters:
