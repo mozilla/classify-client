@@ -12,10 +12,10 @@ pub trait RequestClientIp<S> {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError>;
 }
 
-pub trait RequestPathIps<'a, S> {
+pub trait RequestTraceIps<'a, S> {
     /// Iterate all known proxy and client IPs, starting with the IPs closest to
     /// the server, and ending with the alleged client.
-    fn path_ips(&'a self) -> Vec<IpAddr>;
+    fn trace_ips(&'a self) -> Vec<IpAddr>;
 }
 
 impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
@@ -25,7 +25,7 @@ impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
         let is_trusted_ip =
             |ip: &&IpAddr| trusted_proxy_list.iter().any(|range| range.contains(*ip));
 
-        self.path_ips()
+        self.trace_ips()
             .iter()
             .skip_while(is_trusted_ip)
             .next()
@@ -34,12 +34,12 @@ impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
     }
 }
 
-impl<'a, S> RequestPathIps<'a, S> for HttpRequest<S> {
-    fn path_ips(&'a self) -> Vec<IpAddr> {
-        let mut path: Vec<IpAddr> = Vec::new();
+impl<'a, S> RequestTraceIps<'a, S> for HttpRequest<S> {
+    fn trace_ips(&'a self) -> Vec<IpAddr> {
+        let mut trace: Vec<IpAddr> = Vec::new();
 
         if let Some(peer_addr) = self.peer_addr() {
-            path.push(peer_addr.ip());
+            trace.push(peer_addr.ip());
         }
 
         if let Some(x_forwarded_for) = self.headers().get("X-Forwarded-For") {
@@ -47,11 +47,11 @@ impl<'a, S> RequestPathIps<'a, S> for HttpRequest<S> {
                 let mut header_ips: Vec<IpAddr> =
                     header.split(',').flat_map(|ip| ip.trim().parse()).collect();
                 header_ips.reverse();
-                path.append(&mut header_ips);
+                trace.append(&mut header_ips);
             }
         }
 
-        path
+        trace
     }
 }
 
@@ -62,11 +62,11 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn path_ip_works() {
+    fn trace_ip_works() {
         let req =
             TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12").finish();
         assert_eq!(
-            req.path_ips(),
+            req.trace_ips(),
             vec![
                 IpAddr::V4(Ipv4Addr::new(9, 10, 11, 12)),
                 IpAddr::V4(Ipv4Addr::new(5, 6, 7, 8)),
