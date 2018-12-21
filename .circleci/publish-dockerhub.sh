@@ -22,7 +22,7 @@ function retry() {
 }
 
 # configure docker creds
-retry 3  echo "$DOCKER_PASS" | docker login -u="$DOCKER_USER" --password-stdin
+echo "$DOCKER_PASS" | docker login -u="$DOCKER_USER" --password-stdin
 
 docker images
 
@@ -30,7 +30,7 @@ docker images
 if [ -n "$1" ]; then
     TAG="$1"
     echo "Tag and push ${DOCKERHUB_REPO}:${TAG} to Dockerhub"
-    docker tag $DOCKERHUB_REPO:build "$DOCKERHUB_REPO:$TAG" ||
+    docker tag classify-client:build "$DOCKERHUB_REPO:$TAG" ||
         (echo "Couldn't re-tag as $DOCKERHUB_REPO:$TAG" && false)
     retry 3 docker push "$DOCKERHUB_REPO:$TAG" ||
         (echo "Couldn't push $DOCKERHUB_REPO:$TAG" && false)
