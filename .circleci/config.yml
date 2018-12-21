@@ -17,6 +17,16 @@ jobs:
           command: |
             rustup component add rustfmt
             rustup component add clippy
+            # cargo-kcov needs kcov >= 30. Debian as kcov 11, so these steps
+            # build kcov directly.
+            apt-get update
+            apt-get upgrade -y
+            apt-get install -y cmake g++ pkg-config jq libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
+            cargo install cargo-kcov
+            mkdir -p /tmp/kcov
+            pushd /tmp/kcov
+            cargo kcov --print-install-kcov-sh | sh
+            popd
       - run:
           name: Rustfmt
           command: cargo fmt -- --check
@@ -29,6 +39,12 @@ jobs:
       - run:
           name: Test
           command: cargo test --release
+      - run:
+          name: Coverage
+          command: cargo kcov
+      - codecov/upload:
+          file: target/cov/
+          flags: flags cargo_kcov
   build:
     docker:
       - image: docker:18.03.0-ce
