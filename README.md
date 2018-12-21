@@ -32,6 +32,11 @@ Via environment variables:
 - `HUMAN_LOGS`: set to `true` to use human readable logging (default: MozLog as JSON)
 - `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
 - `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
+- `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
+- `DEBUG`: A boolean that enables extra debugging options, such as a `/debug`
+    endpoint that shows internal server state.
+- `TRUSTED_PROXY_LIST`: A comma-separated list of CIDR ranges that trusted
+    proxies will be in. Supports both IPv4 and IPv6.
 
 ## Tests
 

@@ -16,7 +16,7 @@ use sentry_actix::SentryMiddleware;
 use slog;
 
 use crate::{
-    endpoints::{classify, dockerflow, EndpointState},
+    endpoints::{classify, debug, dockerflow, EndpointState},
     errors::ClassifyError,
     geoip::GeoIpActor,
     settings::Settings,
@@ -57,13 +57,13 @@ fn main() -> Result<(), ClassifyError> {
 
     let state = EndpointState {
         geoip,
-        settings,
+        settings: settings.clone(),
         log: app_log.clone(),
     };
 
     let addr = format!("{}:{}", state.settings.host, state.settings.port);
     let server = actix_web::server::new(move || {
-        App::with_state(state.clone())
+        let mut app = App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
             .middleware(request_log.clone())
             // API Endpoints
@@ -71,7 +71,13 @@ fn main() -> Result<(), ClassifyError> {
             // Dockerflow Endpoints
             .resource("/__lbheartbeat__", |r| r.get().f(dockerflow::lbheartbeat))
             .resource("/__heartbeat__", |r| r.get().f(dockerflow::heartbeat))
-            .resource("/__version__", |r| r.get().f(dockerflow::version))
+            .resource("/__version__", |r| r.get().f(dockerflow::version));
+
+        if settings.debug {
+            app = app.resource("/debug", |r| r.get().f(debug::debug_handler));
+        }
+
+        app
     })
     .bind(&addr)?;
 

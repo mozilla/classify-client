@@ -91,3 +91,11 @@ impl<S> Middleware<S> for MozLogger {
         Finished::Done
     }
 }
+
+impl Default for MozLogger {
+    fn default() -> Self {
+        Self {
+            log: slog::Logger::root(slog::Discard, slog::o!()).new(slog::o!()),
+        }
+    }
+}

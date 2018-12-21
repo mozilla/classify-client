@@ -3,7 +3,7 @@ use maxminddb::{self, MaxMindDBError};
 use serde_derive::Serialize;
 use std::fmt;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ClassifyError {
     message: String,
 }
@@ -60,16 +60,17 @@ impl From<MaxMindDBError> for ClassifyError {
 }
 
 macro_rules! impl_from_error {
-    ($error: ty, $desc: expr) => {
+    ($error: ty) => {
         impl From<$error> for ClassifyError {
             fn from(error: $error) -> Self {
-                Self::from_source($desc, error)
+                Self::from_source(stringify!($error), error)
             }
         }
     };
 }
 
-impl_from_error!(actix_web::http::header::ToStrError, "ToStrError");
-impl_from_error!(config::ConfigError, "ConfigError");
-impl_from_error!(std::net::AddrParseError, "AddrParseError");
-impl_from_error!(std::io::Error, "IoError");
+impl_from_error!(actix_web::http::header::ToStrError);
+impl_from_error!(config::ConfigError);
+impl_from_error!(std::net::AddrParseError);
+impl_from_error!(std::io::Error);
+impl_from_error!(ipnet::AddrParseError);
