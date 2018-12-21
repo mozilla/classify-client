@@ -14,6 +14,7 @@ pub struct Settings {
     // TODO This should be Vec<ipnet::IpNet>, but the config crate seemingly
     // can't deal with Vecs of non primitives?
     pub trusted_proxy_list: Vec<String>,
+    pub human_logs: bool,
     pub version_file: PathBuf,
     pub sentry_dsn: String,
 }
@@ -48,6 +49,7 @@ impl Default for Settings {
             host: "[::]".to_owned(),
             port: 8080,
             trusted_proxy_list: Vec::new(),
+            human_logs: false,
             version_file: "./version.json".into(),
             sentry_dsn: "".into(),
         }

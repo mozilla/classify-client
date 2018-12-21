@@ -27,6 +27,8 @@ Via environment variables:
 - `HOST`: host (default: `"localhost"`)
 - `PORT`: port number (default: `"8080"`)
 - `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoLite2-Country.mmdb"`)
+- `HUMAN_LOGS`: set to `true` to use human readable logging (default: MozLog as JSON)
+- `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
 - `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
 - `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
 - `DEBUG`: A boolean that enables extra debugging options, such as a `/debug`
