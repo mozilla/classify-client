@@ -5,7 +5,11 @@
 # DOCKER_USER
 # DOCKER_PASS
 #
-version: 2
+version: 2.1
+
+orbs:
+  codecov: codecov/codecov@1.0.1
+
 jobs:
   test:
     docker:
@@ -45,6 +49,7 @@ jobs:
       - codecov/upload:
           file: target/cov/
           flags: flags cargo_kcov
+
   build:
     docker:
       - image: docker:18.03.0-ce
@@ -108,7 +113,6 @@ jobs:
             docker push $IMAGE
 
 workflows:
-  version: 2
   test:
     jobs:
       - test
