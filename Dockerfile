@@ -25,7 +25,7 @@ COPY --from=build /app/GeoLite2-Country.mmdb ./
 COPY --from=build /app/version.json ./
 
 USER app
-ENV PORT=8080
+ENV PORT=8000
 ENV HOST=0.0.0.0
 EXPOSE $PORT
 
