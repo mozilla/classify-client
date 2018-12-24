@@ -47,7 +47,7 @@ impl Default for Settings {
             debug: false,
             geoip_db_path: "./GeoLite2-Country.mmdb".into(),
             host: "[::]".to_owned(),
-            port: 8080,
+            port: 8000,
             trusted_proxy_list: Vec::new(),
             human_logs: false,
             version_file: "./version.json".into(),
