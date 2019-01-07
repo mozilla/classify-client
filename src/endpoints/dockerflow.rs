@@ -55,3 +55,37 @@ pub fn version(req: &HttpRequest<EndpointState>) -> HttpResponse {
         .content_type("application/json")
         .body(data)
 }
+
+#[cfg(test)]
+mod tests {
+    use std;
+
+    use crate::endpoints::EndpointState;
+    use actix_web::{http, test};
+
+    #[test]
+    fn lbheartbeat() {
+        let resp = test::TestRequest::default()
+            .run(&super::lbheartbeat)
+            .unwrap();
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
+
+    #[test]
+    fn heartbeat() {
+        let mut srv = test::TestServer::build_with_state(|| EndpointState::default())
+            .start(|app| app.handler(&super::heartbeat));
+        let req = srv.get().finish().unwrap();
+        let resp = srv.execute(req.send()).unwrap();
+        assert_eq!(resp.status(), http::StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn version() {
+        let mut srv = test::TestServer::build_with_state(|| EndpointState::default())
+            .start(|app| app.handler(&super::version));
+        let req = srv.get().finish().unwrap();
+        let resp = srv.execute(req.send()).unwrap();
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
+}
