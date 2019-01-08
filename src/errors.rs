@@ -70,7 +70,7 @@ macro_rules! impl_from_error {
 }
 
 impl_from_error!(actix_web::http::header::ToStrError);
-impl_from_error!(config::ConfigError);
+impl_from_error!(envy::Error);
 impl_from_error!(std::net::AddrParseError);
 impl_from_error!(std::io::Error);
 impl_from_error!(ipnet::AddrParseError);
