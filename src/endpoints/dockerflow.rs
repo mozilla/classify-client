@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn heartbeat() {
-        let mut srv = test::TestServer::build_with_state(|| EndpointState::default())
+        let mut srv = test::TestServer::build_with_state(EndpointState::default)
             .start(|app| app.handler(&super::heartbeat));
         let req = srv.get().finish().unwrap();
         let resp = srv.execute(req.send()).unwrap();
@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn version() {
-        let mut srv = test::TestServer::build_with_state(|| EndpointState::default())
+        let mut srv = test::TestServer::build_with_state(EndpointState::default)
             .start(|app| app.handler(&super::version));
         let req = srv.get().finish().unwrap();
         let resp = srv.execute(req.send()).unwrap();
