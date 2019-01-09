@@ -1,93 +1,64 @@
-use config::{Config, Environment};
-use ipnet::IpNet;
 use serde_derive::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
 
 use crate::errors::ClassifyError;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Settings {
-    pub debug: bool,
-    pub geoip_db_path: PathBuf,
-    pub host: String,
-    pub port: u16,
-    // TODO This should be Vec<ipnet::IpNet>, but the config crate seemingly
-    // can't deal with Vecs of non primitives?
-    pub trusted_proxy_list: Vec<String>,
-    pub human_logs: bool,
-    pub version_file: PathBuf,
-    pub sentry_dsn: String,
+fn default_geoip_db_path() -> PathBuf {
+    "./GeoLite2-Country.mmdb".into()
 }
 
-impl Settings {
-    /// Check that all settings are well-formed
-    pub fn check(&self) -> Result<(), ClassifyError> {
-        self.trusted_proxy_list()?;
-        Ok(())
-    }
+fn default_host() -> String {
+    "[::]".to_owned()
+}
 
-    /// Get a list of trusted IP address ranges
-    pub fn trusted_proxy_list(&self) -> Result<Vec<IpNet>, ClassifyError> {
-        let ips: Result<Vec<IpNet>, _> = self
-            .trusted_proxy_list
-            .iter()
-            .map(|s| {
-                s.parse().map_err(|err| {
-                    ClassifyError::from_source(format!("While parsing IP range {:?}", s), err)
-                })
-            })
-            .collect();
-        Ok(ips?)
-    }
+fn default_port() -> u16 {
+    8000
+}
+
+fn default_version_file() -> PathBuf {
+    "./version.json".into()
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Settings {
+    #[serde(default)]
+    pub debug: bool,
+
+    #[serde(default = "default_geoip_db_path")]
+    pub geoip_db_path: PathBuf,
+
+    #[serde(default = "default_host")]
+    pub host: String,
+
+    #[serde(default = "default_port")]
+    pub port: u16,
+
+    #[serde(default)]
+    pub trusted_proxy_list: HashSet<ipnet::IpNet>,
+
+    #[serde(default)]
+    pub human_logs: bool,
+
+    #[serde(default = "default_version_file")]
+    pub version_file: PathBuf,
+
+    pub sentry_dsn: Option<String>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self {
-            debug: false,
-            geoip_db_path: "./GeoLite2-Country.mmdb".into(),
-            host: "[::]".to_owned(),
-            port: 8000,
-            trusted_proxy_list: Vec::new(),
-            human_logs: false,
-            version_file: "./version.json".into(),
-            sentry_dsn: "".into(),
-        }
+        // Produce a default value by creating a mock empty environment, and
+        // then asking envy to deserialize it. Since all settings have a default
+        // value specified in the struct, this works and keeps everything in sync.
+        let empty_env: Vec<(String, String)> = Vec::new();
+        envy::from_iter(empty_env.into_iter()).unwrap()
     }
 }
 
 impl Settings {
+    /// Load settings from the environment.
     pub fn load() -> Result<Self, ClassifyError> {
-        let mut config = Config::new();
-
-        let defaults = {
-            let settings = Settings::default();
-            let mut default_config = Config::try_from(&settings)?;
-            // TODO this doesn't get pulled over from Settings::Default for some reason?
-            default_config.set_default("trusted_proxy_list", settings.trusted_proxy_list)?;
-            default_config
-        };
-        config.merge(defaults)?;
-
-        let mut env = Config::new();
-        env.merge(Environment::new())?;
-        if let Ok(csv_ip_ranges) = env.get_str("trusted_proxy_list") {
-            // Split the String into a Vec<String>
-            env.set(
-                "trusted_proxy_list",
-                csv_ip_ranges
-                    .split(',')
-                    .map(|v| v.trim())
-                    .collect::<Vec<_>>(),
-            )?;
-        }
-        config.merge(env)?;
-
-        let rv: Settings = config.try_into()?;
-
-        // Test that all settings are well formed
-        rv.check()?;
-
-        Ok(rv)
+        let settings: Self = envy::from_env()?;
+        Ok(settings)
     }
 }

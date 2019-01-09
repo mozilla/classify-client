@@ -8,7 +8,7 @@ edition = "2018"
 actix = "^0.7.6"
 actix-web = "^0.7.14"
 chrono = { version = "^0.4", features = ["serde"] }
-config = { version = "^0.9.1", default_features = false }
+envy = "^0.3.3"
 futures = "*"
 lazy_static = "^1.2.0"
 ipnet = { version = "^2", features = ["serde"] }
