@@ -13,24 +13,9 @@ orbs:
 jobs:
   test:
     docker:
-      - image: rust:1.31-stretch
+      - image: mozilla/cidockerbases:rust-2019-01-09
     steps:
       - checkout
-      - run:
-          name: Install tools
-          command: |
-            rustup component add rustfmt
-            rustup component add clippy
-            # cargo-kcov needs kcov >= 30. Debian as kcov 11, so these steps
-            # build kcov directly.
-            apt-get update
-            apt-get upgrade -y
-            apt-get install -y cmake g++ pkg-config jq libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
-            cargo install cargo-kcov
-            mkdir -p /tmp/kcov
-            pushd /tmp/kcov
-            cargo kcov --print-install-kcov-sh | sh
-            popd
       - run:
           name: Rustfmt
           command: cargo fmt -- --check
@@ -52,13 +37,9 @@ jobs:
 
   build:
     docker:
-      - image: docker:18.03.0-ce
+      - image: mozilla/cidockerbases:docker-2019-01-09
     working_directory: /dockerflow
     steps:
-      - run:
-          name: Install Docker build dependencies
-          command: apk add --no-cache openssh-client git
-
       - checkout
       - setup_remote_docker
 
@@ -88,7 +69,7 @@ jobs:
 
   publish:
     docker:
-      - image: docker:18.03.0-ce
+      - image: mozilla/cidockerbases:docker-2019-01-09
     steps:
       - setup_remote_docker
       - restore_cache:
