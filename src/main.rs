@@ -1,46 +1,37 @@
 //! A server that tells clients what time it is and where they are in the world.
 //!
 #![deny(clippy::all)]
-#![deny(missing_docs)]
 
 mod endpoints;
 mod errors;
 mod geoip;
 mod logging;
+mod middleware;
 mod settings;
 mod utils;
 
 use actix_web::App;
+use cadence::{BufferedUdpMetricSink, StatsdClient};
 use sentry;
 use sentry_actix::SentryMiddleware;
 use slog;
+use std::net::UdpSocket;
 
 use crate::{
     endpoints::{classify, debug, dockerflow, EndpointState},
     errors::ClassifyError,
     geoip::GeoIpActor,
+    middleware::ResponseMetrics,
     settings::Settings,
 };
 
 fn main() -> Result<(), ClassifyError> {
-    let sys = actix::System::new("classify-client");
-
     let settings = Settings::load()?;
 
     let _guard = sentry::init(settings.sentry_dsn.clone());
     sentry::integrations::panic::register_panic_handler();
 
-    let geoip = {
-        let path = settings.geoip_db_path.clone();
-        actix::SyncArbiter::start(1, move || {
-            GeoIpActor::from_path(&path).unwrap_or_else(|err| {
-                panic!(format!(
-                    "Could not open geoip database at {:?}: {}",
-                    path, err
-                ))
-            })
-        })
-    };
+    let sys = actix::System::new("classify-client");
 
     let app_log = if settings.human_logs {
         logging::MozLogger::new_human()
@@ -55,8 +46,55 @@ fn main() -> Result<(), ClassifyError> {
         logging::MozLogger::new_json("request.summary")
     };
 
+    let metrics: StatsdClient = {
+        let log_metrics = app_log.clone();
+        let builder = {
+            let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+            socket.set_nonblocking(true).unwrap();
+            match BufferedUdpMetricSink::from(&settings.metrics_target, socket) {
+                Ok(udp_sink) => {
+                    let sink = cadence::QueuingMetricSink::from(udp_sink);
+                    StatsdClient::builder("classify-client", sink)
+                }
+                Err(err) => {
+                    slog::error!(
+                        log_main.log,
+                        "Could not connect to metrics host on {}: {}",
+                        &settings.metrics_target,
+                        err,
+                    );
+                    let sink = cadence::NopMetricSink;
+                    StatsdClient::builder("classify-client", sink)
+                }
+            }
+        };
+        builder
+            .with_error_handler(move |error| {
+                slog::error!(log_metrics.log, "Could not send metric: {}", error)
+            })
+            .build()
+    };
+
+    let geoip = {
+        let path = settings.geoip_db_path.clone();
+        let geoip_metrics = metrics.clone();
+        actix::SyncArbiter::start(1, move || {
+            GeoIpActor::builder()
+                .path(&path)
+                .metrics(geoip_metrics.clone())
+                .build()
+                .unwrap_or_else(|err| {
+                    panic!(format!(
+                        "Could not open geoip database at {:?}: {}",
+                        path, err
+                    ))
+                })
+        })
+    };
+
     let state = EndpointState {
         geoip,
+        metrics,
         settings: settings.clone(),
         log: app_log.clone(),
     };
@@ -65,6 +103,7 @@ fn main() -> Result<(), ClassifyError> {
     let server = actix_web::server::new(move || {
         let mut app = App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
+            .middleware(ResponseMetrics)
             .middleware(request_log.clone())
             // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
