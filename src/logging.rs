@@ -2,8 +2,9 @@ use std::io;
 
 use actix_web::middleware::{Finished, Middleware, Started};
 use actix_web::{HttpRequest, HttpResponse, Result};
-use slog::{self, Drain, Record, Serializer, KV};
+use slog::{self, Drain};
 use slog_async;
+use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
 use slog_term;
 
@@ -40,6 +41,7 @@ impl MozLogger {
     }
 }
 
+#[derive(KV)]
 struct MozLogFields {
     method: String,
     path: String,
@@ -47,23 +49,6 @@ struct MozLogFields {
     agent: Option<String>,
     remote: Option<String>,
     lang: Option<String>,
-}
-
-impl KV for MozLogFields {
-    fn serialize(&self, _: &Record, serializer: &mut Serializer) -> slog::Result {
-        if let Some(ref agent) = self.agent {
-            serializer.emit_str("agent", agent)?;
-        }
-        if let Some(ref lang) = self.lang {
-            serializer.emit_str("lang", lang)?;
-        }
-        if let Some(ref remote) = self.remote {
-            serializer.emit_str("remoteAddressChain", remote)?;
-        }
-        serializer.emit_str("path", &self.path)?;
-        serializer.emit_str("method", &self.method)?;
-        serializer.emit_u16("code", self.code)
-    }
 }
 
 impl<S> Middleware<S> for MozLogger {
