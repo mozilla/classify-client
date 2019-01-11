@@ -139,7 +139,6 @@ mod tests {
         assert_eq!(resp.status(), http::StatusCode::OK);
 
         let value: serde_json::Value = srv.execute(resp.json()).unwrap();
-        println!("{:?}", value);
         assert_eq!(
             *value.get("country").unwrap(),
             json!("US"),
@@ -164,8 +163,6 @@ mod tests {
         let resp = srv.execute(req.send()).unwrap();
 
         let headers = resp.headers();
-        println!("headers: {:?}", headers);
-        println!("body: {:?}", srv.execute(resp.body()));
         assert!(
             headers.contains_key(http::header::CACHE_CONTROL),
             "a cache control header should be set"

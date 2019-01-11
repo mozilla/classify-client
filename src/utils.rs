@@ -20,7 +20,6 @@ pub trait RequestTraceIps<'a, S> {
 
 impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
-        println!("checking client_ip");
         let trusted_proxy_list = &self.state().settings.trusted_proxy_list;
 
         let is_trusted_ip =
