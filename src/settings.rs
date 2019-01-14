@@ -1,5 +1,5 @@
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::HashSet, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::errors::ClassifyError;
 
@@ -34,7 +34,7 @@ pub struct Settings {
     pub port: u16,
 
     #[serde(default)]
-    pub trusted_proxy_list: HashSet<ipnet::IpNet>,
+    pub trusted_proxy_list: Vec<ipnet::IpNet>,
 
     #[serde(default)]
     pub human_logs: bool,

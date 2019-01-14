@@ -109,10 +109,7 @@ mod tests {
     fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
         let _sys = actix::System::new("test");
         let mut state = EndpointState::default();
-        state
-            .settings
-            .trusted_proxy_list
-            .insert("5.6.7.8/32".parse()?);
+        state.settings.trusted_proxy_list = vec!["5.6.7.8/32".parse()?];
 
         let req = TestRequest::with_state(state)
             .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
@@ -131,14 +128,7 @@ mod tests {
     fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
         let _sys = actix::System::new("test");
         let mut state = EndpointState::default();
-        state
-            .settings
-            .trusted_proxy_list
-            .insert("5.6.7.8/32".parse()?);
-        state
-            .settings
-            .trusted_proxy_list
-            .insert("1.2.3.4/32".parse()?);
+        state.settings.trusted_proxy_list = vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?];
 
         let req = TestRequest::with_state(state)
             .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
