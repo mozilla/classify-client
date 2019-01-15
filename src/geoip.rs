@@ -112,7 +112,7 @@ impl actix::Message for CountryForIp {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::tests::TestMetricSink;
+    use crate::metrics::tests::TestMetricSink;
     use cadence::StatsdClient;
     use std::{
         ops::Deref,

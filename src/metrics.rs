@@ -1,16 +1,46 @@
-use crate::endpoints::EndpointState;
+use crate::{endpoints::EndpointState, errors::ClassifyError, settings::Settings, APP_NAME};
 use actix_web::{
     middleware::{Finished, Middleware, Started},
     HttpRequest, HttpResponse,
 };
-use cadence::prelude::*;
-use std::time::Instant;
+use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
+use std::{net::UdpSocket, time::Instant};
 
-pub struct ResponseMetrics;
+pub fn get_client(settings: &Settings, log: slog::Logger) -> Result<StatsdClient, ClassifyError> {
+    let builder = {
+        // Bind a socket to any/all interfaces (0.0.0.0) and an arbitrary
+        // port, chosen by the OS (indicated by port 0). This port is used
+        // only to send metrics data, and isn't used to receive anything.
+
+        let socket = UdpSocket::bind("0.0.0.0:0")?;
+        socket.set_nonblocking(true)?;
+        match BufferedUdpMetricSink::from(&settings.metrics_target, socket) {
+            Ok(udp_sink) => {
+                let sink = cadence::QueuingMetricSink::from(udp_sink);
+                StatsdClient::builder(APP_NAME, sink)
+            }
+            Err(err) => {
+                slog::error!(
+                    log,
+                    "Could not connect to metrics host on {}: {}",
+                    settings.metrics_target,
+                    err,
+                );
+                let sink = cadence::NopMetricSink;
+                StatsdClient::builder(APP_NAME, sink)
+            }
+        }
+    };
+    Ok(builder
+        .with_error_handler(move |error| slog::error!(log, "Could not send metric: {}", error))
+        .build())
+}
+
+pub struct ResponseMiddleware;
 
 struct RequestStart(Instant);
 
-impl Middleware<EndpointState> for ResponseMetrics {
+impl Middleware<EndpointState> for ResponseMiddleware {
     fn start(&self, req: &HttpRequest<EndpointState>) -> actix_web::Result<Started> {
         req.extensions_mut().insert(RequestStart(Instant::now()));
         req.state()
@@ -45,8 +75,8 @@ impl Middleware<EndpointState> for ResponseMetrics {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{endpoints::EndpointState, utils::tests::TestMetricSink};
+pub mod tests {
+    use crate::endpoints::EndpointState;
     use actix_web::{
         middleware::{self, Middleware},
         test::TestRequest,
@@ -54,7 +84,23 @@ mod tests {
     };
     use cadence::StatsdClient;
     use regex::Regex;
-    use std::sync::{Arc, Mutex};
+    use std::{
+        io,
+        sync::{Arc, Mutex},
+    };
+
+    #[derive(Clone, Debug)]
+    pub struct TestMetricSink {
+        pub log: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl cadence::MetricSink for TestMetricSink {
+        fn emit(&self, metric: &str) -> io::Result<usize> {
+            let mut log = self.log.lock().unwrap();
+            log.push(metric.to_owned());
+            Ok(0)
+        }
+    }
 
     #[test]
     fn test_response_metrics_works() -> Result<(), Box<dyn std::error::Error>> {
@@ -66,7 +112,7 @@ mod tests {
         };
 
         let request = TestRequest::with_state(state).finish();
-        let middleware = super::ResponseMetrics;
+        let middleware = super::ResponseMiddleware;
         assert_eq!(
             log.lock().unwrap().len(),
             0,
@@ -112,7 +158,7 @@ mod tests {
 
         let request = TestRequest::with_state(state).finish();
         let response = HttpResponse::InternalServerError().finish();
-        let middleware = super::ResponseMetrics;
+        let middleware = super::ResponseMiddleware;
 
         middleware.start(&request).unwrap();
         middleware.finish(&request, &response);

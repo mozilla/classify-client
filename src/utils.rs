@@ -56,27 +56,10 @@ impl<'a, S> RequestTraceIps<'a, S> for HttpRequest<S> {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use actix_web::test::TestRequest;
-    use std::{
-        io,
-        net::{IpAddr, Ipv4Addr},
-        sync::{Arc, Mutex},
-    };
-
-    #[derive(Clone, Debug)]
-    pub struct TestMetricSink {
-        pub log: Arc<Mutex<Vec<String>>>,
-    }
-
-    impl cadence::MetricSink for TestMetricSink {
-        fn emit(&self, metric: &str) -> io::Result<usize> {
-            let mut log = self.log.lock().unwrap();
-            log.push(metric.to_owned());
-            Ok(0)
-        }
-    }
+    use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
     fn trace_ip_works() {

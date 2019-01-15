@@ -4,7 +4,7 @@ pub mod dockerflow;
 
 use std::default::Default;
 
-use crate::{geoip::GeoIpActor, logging::MozLogger, settings::Settings};
+use crate::{geoip::GeoIpActor, logging::MozLogger, settings::Settings, APP_NAME};
 
 #[derive(Clone)]
 pub struct EndpointState {
@@ -20,7 +20,7 @@ impl Default for EndpointState {
             settings: Settings::default(),
             geoip: actix::SyncArbiter::start(1, GeoIpActor::default),
             log: MozLogger::default(),
-            metrics: cadence::StatsdClient::from_sink("classify-client", cadence::NopMetricSink),
+            metrics: cadence::StatsdClient::from_sink(APP_NAME, cadence::NopMetricSink),
         }
     }
 }
