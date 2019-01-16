@@ -1,6 +1,6 @@
 # Classify Client
 
- [![codecov](https://codecov.io/gh/mozilla/classify-client/branch/master/graph/badge.svg)](https://codecov.io/gh/mozilla/classify-client)
+ [![codecov](https://codecov.io/gh/mozilla/classify-client/branch/staging/graph/badge.svg)](https://codecov.io/gh/mozilla/classify-client)
 
 This is an optimized version of the classify client endpoint in [Normandy](https://github.com/mozilla/normandy).
 
