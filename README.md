@@ -26,17 +26,19 @@ A GeoIP database will be downloaded automatically during the build.
 
 Via environment variables:
 
-- `HOST`: host (default: `"localhost"`)
-- `PORT`: port number (default: `"8000"`)
-- `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoLite2-Country.mmdb"`)
-- `HUMAN_LOGS`: set to `true` to use human readable logging (default: MozLog as JSON)
-- `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
-- `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
-- `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
 - `DEBUG`: A boolean that enables extra debugging options, such as a `/debug`
     endpoint that shows internal server state.
+- `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoLite2-Country.mmdb"`)
+- `HOST`: host to bind to (default: `"localhost"`)
+- `HUMAN_LOGS`: set to `true` to use human readable logging (default: MozLog as JSON)
+- `METRICS_TARGET`: The host and port to send statsd metrics to. May be a
+    hostname like `"metrics.example.com:8125"` or an IP like
+    `"127.0.0.1:8125"`. Port is required. (default: `"localhost:8125"`)
+- `PORT`: port number to bind to (default: `"8000"`)
+- `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
 - `TRUSTED_PROXY_LIST`: A comma-separated list of CIDR ranges that trusted
     proxies will be in. Supports both IPv4 and IPv6.
+- `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
 
 ## Tests
 

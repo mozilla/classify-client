@@ -19,6 +19,10 @@ fn default_version_file() -> PathBuf {
     "./version.json".into()
 }
 
+fn default_metrics_target() -> String {
+    "localhost:8125".to_owned()
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Settings {
     #[serde(default)]
@@ -43,6 +47,12 @@ pub struct Settings {
     pub version_file: PathBuf,
 
     pub sentry_dsn: Option<String>,
+
+    /// The host and port to send statsd metrics to. May be a hostname like
+    /// "metrics.example.com:8125" or an ip like "127.0.0.1:8125". Port is
+    /// required. Defaults to "localhost:8125".
+    #[serde(default = "default_metrics_target")]
+    pub metrics_target: String,
 }
 
 impl Default for Settings {

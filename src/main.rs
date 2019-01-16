@@ -1,14 +1,14 @@
 //! A server that tells clients what time it is and where they are in the world.
 //!
 #![deny(clippy::all)]
-#![deny(missing_docs)]
 
-mod endpoints;
-mod errors;
-mod geoip;
-mod logging;
-mod settings;
-mod utils;
+pub mod endpoints;
+pub mod errors;
+pub mod geoip;
+pub mod logging;
+pub mod metrics;
+pub mod settings;
+pub mod utils;
 
 use actix_web::App;
 use sentry;
@@ -22,25 +22,15 @@ use crate::{
     settings::Settings,
 };
 
-fn main() -> Result<(), ClassifyError> {
-    let sys = actix::System::new("classify-client");
+const APP_NAME: &str = "classify-client";
 
+fn main() -> Result<(), ClassifyError> {
     let settings = Settings::load()?;
 
     let _guard = sentry::init(settings.sentry_dsn.clone());
     sentry::integrations::panic::register_panic_handler();
 
-    let geoip = {
-        let path = settings.geoip_db_path.clone();
-        actix::SyncArbiter::start(1, move || {
-            GeoIpActor::from_path(&path).unwrap_or_else(|err| {
-                panic!(format!(
-                    "Could not open geoip database at {:?}: {}",
-                    path, err
-                ))
-            })
-        })
-    };
+    let sys = actix::System::new(APP_NAME);
 
     let app_log = if settings.human_logs {
         logging::MozLogger::new_human()
@@ -55,8 +45,33 @@ fn main() -> Result<(), ClassifyError> {
         logging::MozLogger::new_json("request.summary")
     };
 
+    let metrics = metrics::get_client(&settings, app_log.clone().log).unwrap_or_else(|err| {
+        panic!(format!(
+            "Critical failure setting up metrics logging: {}",
+            err
+        ))
+    });
+
+    let geoip = {
+        let path = settings.geoip_db_path.clone();
+        let geoip_metrics = metrics.clone();
+        actix::SyncArbiter::start(1, move || {
+            GeoIpActor::builder()
+                .path(&path)
+                .metrics(geoip_metrics.clone())
+                .build()
+                .unwrap_or_else(|err| {
+                    panic!(format!(
+                        "Could not open geoip database at {:?}: {}",
+                        path, err
+                    ))
+                })
+        })
+    };
+
     let state = EndpointState {
         geoip,
+        metrics,
         settings: settings.clone(),
         log: app_log.clone(),
     };
@@ -65,6 +80,7 @@ fn main() -> Result<(), ClassifyError> {
     let server = actix_web::server::new(move || {
         let mut app = App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
+            .middleware(metrics::ResponseMiddleware)
             .middleware(request_log.clone())
             // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))

@@ -87,7 +87,7 @@ mod tests {
     use chrono::DateTime;
     use maxminddb::geoip2;
     use serde_json::{json, Value};
-    use std::{collections::HashSet, path::PathBuf};
+    use std::collections::HashSet;
 
     #[test]
     fn test_classification_serialization() {
@@ -119,8 +119,10 @@ mod tests {
     fn test_classify_endpoint() {
         let mut srv = test::TestServer::build_with_state(|| EndpointState {
             geoip: {
-                let path: PathBuf = "./GeoLite2-Country.mmdb".into();
-                actix::SyncArbiter::start(1, move || GeoIpActor::from_path(&path).unwrap())
+                let path = "./GeoLite2-Country.mmdb";
+                actix::SyncArbiter::start(1, move || {
+                    GeoIpActor::builder().path(&path).build().unwrap()
+                })
             },
             settings: Settings {
                 trusted_proxy_list: vec!["127.0.0.1/32".parse().unwrap()],
