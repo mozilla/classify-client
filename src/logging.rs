@@ -51,14 +51,10 @@ struct MozLogFields {
     lang: Option<String>,
 }
 
-impl<S> Middleware<S> for MozLogger {
-    fn start(&self, _req: &HttpRequest<S>) -> Result<Started> {
-        Ok(Started::Done)
-    }
-
-    fn finish(&self, request: &HttpRequest<S>, resp: &HttpResponse) -> Finished {
+impl MozLogFields {
+    fn new<S>(request: &HttpRequest<S>, resp: &HttpResponse) -> Self {
         let headers = request.headers();
-        let fields = MozLogFields {
+        MozLogFields {
             method: request.method().to_string(),
             path: request.uri().to_string(),
             code: resp.status().as_u16(),
@@ -71,7 +67,17 @@ impl<S> Middleware<S> for MozLogger {
                 .and_then(|v| v.to_str().ok())
                 .map(|v| v.to_string()),
             remote: request.connection_info().remote().map(|r| r.to_string()),
-        };
+        }
+    }
+}
+
+impl<S> Middleware<S> for MozLogger {
+    fn start(&self, _req: &HttpRequest<S>) -> Result<Started> {
+        Ok(Started::Done)
+    }
+
+    fn finish(&self, request: &HttpRequest<S>, resp: &HttpResponse) -> Finished {
+        let fields = MozLogFields::new(request, resp);
         slog::info!(self.log, "" ; slog::o!(fields));
         Finished::Done
     }
@@ -82,5 +88,26 @@ impl Default for MozLogger {
         Self {
             log: slog::Logger::root(slog::Discard, slog::o!()).new(slog::o!()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logging::MozLogFields;
+    use actix_web::{http, test, HttpResponse};
+
+    #[test]
+    fn test_request_fields() {
+        let request = test::TestRequest::with_header("User-Agent", "test-request").finish();
+        let response = HttpResponse::build(http::StatusCode::CREATED).finish();
+
+        let fields = MozLogFields::new(&request, &response);
+
+        assert_eq!(fields.method, "GET");
+        assert_eq!(fields.path, "/");
+        assert_eq!(fields.code, 201);
+        assert_eq!(fields.agent, Some("test-request".into()));
+        assert_eq!(fields.lang, None);
+        assert_eq!(fields.remote, None);
     }
 }
