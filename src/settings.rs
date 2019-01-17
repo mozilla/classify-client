@@ -72,3 +72,41 @@ impl Settings {
         Ok(settings)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use crate::settings::Settings;
+
+    #[test]
+    fn test_default_settings() {
+        let settings = Settings::default();
+
+        assert_eq!(settings.debug, false);
+        assert_eq!(
+            settings.geoip_db_path.to_str(),
+            Some("./GeoLite2-Country.mmdb")
+        );
+        assert_eq!(settings.host, "[::]");
+        assert_eq!(settings.port, 8000);
+        assert_eq!(settings.trusted_proxy_list, Vec::new());
+        assert_eq!(settings.human_logs, false);
+        assert_eq!(settings.version_file.to_str(), Some("./version.json"));
+        assert_eq!(settings.sentry_dsn, None);
+        assert_eq!(settings.metrics_target, "localhost:8125");
+    }
+
+    #[test]
+    fn test_override_via_env_vars() {
+        env::set_var("DEBUG", "true");
+        env::set_var("PORT", "8888");
+        env::set_var("TRUSTED_PROXY_LIST", "2001:db8::/48,192.168.100.14/24");
+
+        let settings = Settings::load().unwrap();
+
+        assert_eq!(settings.debug, true);
+        assert_eq!(settings.port, 8888);
+        assert_eq!(settings.trusted_proxy_list.len(), 2);
+    }
+}

@@ -26,11 +26,11 @@ A GeoIP database will be downloaded automatically during the build.
 
 Via environment variables:
 
-- `DEBUG`: A boolean that enables extra debugging options, such as a `/debug`
-    endpoint that shows internal server state.
+- `DEBUG`: Set to `"true"` to enable extra debugging options, such as a `/debug`
+    endpoint that shows internal server state (default: `"false"`).
 - `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoLite2-Country.mmdb"`)
 - `HOST`: host to bind to (default: `"localhost"`)
-- `HUMAN_LOGS`: set to `true` to use human readable logging (default: MozLog as JSON)
+- `HUMAN_LOGS`: set to `"true"` to use human readable logging (default: MozLog as JSON)
 - `METRICS_TARGET`: The host and port to send statsd metrics to. May be a
     hostname like `"metrics.example.com:8125"` or an IP like
     `"127.0.0.1:8125"`. Port is required. (default: `"localhost:8125"`)
