@@ -52,7 +52,7 @@ struct MozLogFields {
 }
 
 impl MozLogFields {
-    fn build(request: &HttpRequest, resp: &HttpResponse) -> Self {
+    fn new<S>(request: &HttpRequest<S>, resp: &HttpResponse) -> Self {
         let headers = request.headers();
         MozLogFields {
             method: request.method().to_string(),
@@ -77,7 +77,7 @@ impl<S> Middleware<S> for MozLogger {
     }
 
     fn finish(&self, request: &HttpRequest<S>, resp: &HttpResponse) -> Finished {
-        let fields = MozLogFields::build(&request.drop_state(), resp);
+        let fields = MozLogFields::new(request, resp);
         slog::info!(self.log, "" ; slog::o!(fields));
         Finished::Done
     }
@@ -101,7 +101,7 @@ mod tests {
         let request = test::TestRequest::with_header("User-Agent", "test-request").finish();
         let response = HttpResponse::build(http::StatusCode::CREATED).finish();
 
-        let fields = MozLogFields::build(&request, &response);
+        let fields = MozLogFields::new(&request, &response);
 
         assert_eq!(fields.method, "GET");
         assert_eq!(fields.path, "/");
