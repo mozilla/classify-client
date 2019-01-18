@@ -2,7 +2,23 @@ use cadence::{prelude::*, StatsdClient};
 use maxminddb::{self, geoip2, MaxMindDBError};
 use std::{net::IpAddr, path::PathBuf};
 
-use crate::errors::ClassifyError;
+use crate::{errors::ClassifyError, settings::Settings};
+
+pub fn get_arbiter(settings: &Settings, metrics: StatsdClient) -> actix::Addr<GeoIpActor> {
+    let path = settings.geoip_db_path.clone();
+    actix::SyncArbiter::start(1, move || {
+        GeoIpActor::builder()
+            .path(&path)
+            .metrics(metrics.clone())
+            .build()
+            .unwrap_or_else(|err| {
+                panic!(format!(
+                    "Could not open geoip database at {:?}: {}",
+                    path, err
+                ))
+            })
+    })
+}
 
 pub struct GeoIpActor {
     reader: Option<maxminddb::OwnedReader<'static>>,

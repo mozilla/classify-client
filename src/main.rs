@@ -18,7 +18,6 @@ use slog;
 use crate::{
     endpoints::{classify, debug, dockerflow, EndpointState},
     errors::ClassifyError,
-    geoip::GeoIpActor,
     settings::Settings,
 };
 
@@ -32,45 +31,17 @@ fn main() -> Result<(), ClassifyError> {
 
     let sys = actix::System::new(APP_NAME);
 
-    let app_log = if settings.human_logs {
-        logging::MozLogger::new_human()
-    } else {
-        logging::MozLogger::new_json("app")
-    };
-    let log_main = app_log.clone();
+    let app_log = logging::get_logger("app", &settings);
 
-    let request_log = if settings.human_logs {
-        logging::MozLogger::new_human()
-    } else {
-        logging::MozLogger::new_json("request.summary")
-    };
-
-    let metrics = metrics::get_client(&settings, app_log.clone().log).unwrap_or_else(|err| {
+    let metrics = metrics::get_client(&settings, app_log.clone()).unwrap_or_else(|err| {
         panic!(format!(
             "Critical failure setting up metrics logging: {}",
             err
         ))
     });
 
-    let geoip = {
-        let path = settings.geoip_db_path.clone();
-        let geoip_metrics = metrics.clone();
-        actix::SyncArbiter::start(1, move || {
-            GeoIpActor::builder()
-                .path(&path)
-                .metrics(geoip_metrics.clone())
-                .build()
-                .unwrap_or_else(|err| {
-                    panic!(format!(
-                        "Could not open geoip database at {:?}: {}",
-                        path, err
-                    ))
-                })
-        })
-    };
-
     let state = EndpointState {
-        geoip,
+        geoip: geoip::get_arbiter(&settings, metrics.clone()),
         metrics,
         settings: settings.clone(),
         log: app_log.clone(),
@@ -81,7 +52,7 @@ fn main() -> Result<(), ClassifyError> {
         let mut app = App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
             .middleware(metrics::ResponseMiddleware)
-            .middleware(request_log.clone())
+            .middleware(logging::RequestLogMiddleware::new(&settings))
             // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
             .resource("/api/v1/classify_client/", |r| {
@@ -101,7 +72,7 @@ fn main() -> Result<(), ClassifyError> {
     .bind(&addr)?;
 
     server.start();
-    slog::info!(log_main.log, "started server on https://{}", addr);
+    slog::info!(app_log, "started server on https://{}", addr);
     sys.run();
 
     Ok(())
