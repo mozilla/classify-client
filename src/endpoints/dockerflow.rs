@@ -58,8 +58,6 @@ pub fn version(req: &HttpRequest<EndpointState>) -> HttpResponse {
 
 #[cfg(test)]
 mod tests {
-    use std;
-
     use crate::endpoints::EndpointState;
     use actix_web::{http, test};
 
