@@ -46,7 +46,7 @@ pub fn heartbeat(req: &HttpRequest<EndpointState>) -> FutureResponse<HttpRespons
 }
 
 pub fn version(req: &HttpRequest<EndpointState>) -> HttpResponse {
-    let version_file = &req.state().settings.version_file;
+    let version_file = &req.state().version_file;
     // Read the file or deliberately fail with a 500 if missing.
     let mut file = File::open(version_file).unwrap();
     let mut data = String::new();
@@ -58,8 +58,6 @@ pub fn version(req: &HttpRequest<EndpointState>) -> HttpResponse {
 
 #[cfg(test)]
 mod tests {
-    use std;
-
     use crate::endpoints::EndpointState;
     use actix_web::{http, test};
 

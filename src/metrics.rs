@@ -1,12 +1,19 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError, settings::Settings, APP_NAME};
+use crate::{endpoints::EndpointState, errors::ClassifyError, APP_NAME};
 use actix_web::{
     middleware::{Finished, Middleware, Started},
     HttpRequest, HttpResponse,
 };
 use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
-use std::{net::UdpSocket, time::Instant};
+use std::{
+    fmt::Display,
+    net::{ToSocketAddrs, UdpSocket},
+    time::Instant,
+};
 
-pub fn get_client(settings: &Settings, log: slog::Logger) -> Result<StatsdClient, ClassifyError> {
+pub fn get_client<A>(metrics_target: A, log: slog::Logger) -> Result<StatsdClient, ClassifyError>
+where
+    A: ToSocketAddrs + Display,
+{
     let builder = {
         // Bind a socket to any/all interfaces (0.0.0.0) and an arbitrary
         // port, chosen by the OS (indicated by port 0). This port is used
@@ -14,7 +21,7 @@ pub fn get_client(settings: &Settings, log: slog::Logger) -> Result<StatsdClient
 
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         socket.set_nonblocking(true)?;
-        match BufferedUdpMetricSink::from(&settings.metrics_target, socket) {
+        match BufferedUdpMetricSink::from(&metrics_target, socket) {
             Ok(udp_sink) => {
                 let sink = cadence::QueuingMetricSink::from(udp_sink);
                 StatsdClient::builder(APP_NAME, sink)
@@ -23,7 +30,7 @@ pub fn get_client(settings: &Settings, log: slog::Logger) -> Result<StatsdClient
                 slog::error!(
                     log,
                     "Could not connect to metrics host on {}: {}",
-                    settings.metrics_target,
+                    metrics_target,
                     err,
                 );
                 let sink = cadence::NopMetricSink;

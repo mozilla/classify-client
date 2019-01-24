@@ -24,16 +24,26 @@ use crate::{
 const APP_NAME: &str = "classify-client";
 
 fn main() -> Result<(), ClassifyError> {
-    let settings = Settings::load()?;
+    let Settings {
+        debug,
+        geoip_db_path,
+        host,
+        human_logs,
+        metrics_target,
+        port,
+        sentry_dsn,
+        trusted_proxy_list,
+        version_file,
+    } = Settings::load()?;
 
-    let _guard = sentry::init(settings.sentry_dsn.clone());
+    let _guard = sentry::init(sentry_dsn);
     sentry::integrations::panic::register_panic_handler();
 
     let sys = actix::System::new(APP_NAME);
 
-    let app_log = logging::get_logger("app", &settings);
+    let app_log = logging::get_logger("app", human_logs);
 
-    let metrics = metrics::get_client(&settings, app_log.clone()).unwrap_or_else(|err| {
+    let metrics = metrics::get_client(metrics_target, app_log.clone()).unwrap_or_else(|err| {
         panic!(format!(
             "Critical failure setting up metrics logging: {}",
             err
@@ -41,18 +51,19 @@ fn main() -> Result<(), ClassifyError> {
     });
 
     let state = EndpointState {
-        geoip: geoip::get_arbiter(&settings, metrics.clone()),
+        geoip: geoip::get_arbiter(geoip_db_path, metrics.clone()),
         metrics,
-        settings: settings.clone(),
+        trusted_proxies: trusted_proxy_list,
         log: app_log.clone(),
+        version_file,
     };
 
-    let addr = format!("{}:{}", state.settings.host, state.settings.port);
+    let addr = format!("{}:{}", host, port);
     let server = actix_web::server::new(move || {
         let mut app = App::with_state(state.clone())
             .middleware(SentryMiddleware::new())
             .middleware(metrics::ResponseMiddleware)
-            .middleware(logging::RequestLogMiddleware::new(&settings))
+            .middleware(logging::RequestLogMiddleware::new(human_logs))
             // API Endpoints
             .resource("/", |r| r.get().f(classify::classify_client))
             .resource("/api/v1/classify_client/", |r| {
@@ -63,7 +74,7 @@ fn main() -> Result<(), ClassifyError> {
             .resource("/__heartbeat__", |r| r.get().f(dockerflow::heartbeat))
             .resource("/__version__", |r| r.get().f(dockerflow::version));
 
-        if settings.debug {
+        if debug {
             app = app.resource("/debug", |r| r.get().f(debug::debug_handler));
         }
 

@@ -1,6 +1,5 @@
 use std::io;
 
-use crate::settings::Settings;
 use actix_web::middleware::{Finished, Middleware, Started};
 use actix_web::{HttpRequest, HttpResponse, Result};
 use slog::{self, Drain};
@@ -9,9 +8,9 @@ use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
 use slog_term;
 
-pub fn get_logger<S: Into<String>>(prefix: S, settings: &Settings) -> slog::Logger {
+pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool) -> slog::Logger {
     let prefix = prefix.into();
-    let drain = if settings.human_logs {
+    let drain = if human_logs {
         let decorator = slog_term::TermDecorator::new().build();
         let drain = slog_term::CompactFormat::new(decorator).build().fuse();
         slog_async::Async::new(drain).build().fuse()
@@ -28,7 +27,7 @@ pub fn get_logger<S: Into<String>>(prefix: S, settings: &Settings) -> slog::Logg
         slog_async::Async::new(drain).build().fuse()
     };
 
-    slog::Logger::root(drain, slog::o!()).new(slog::o!())
+    slog::Logger::root(drain, slog::o!())
 }
 
 #[derive(KV)]
@@ -46,9 +45,9 @@ pub struct RequestLogMiddleware {
 }
 
 impl RequestLogMiddleware {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(human_logs: bool) -> Self {
         RequestLogMiddleware {
-            log: get_logger("request.summary", settings),
+            log: get_logger("request.summary", human_logs),
         }
     }
 }

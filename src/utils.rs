@@ -20,7 +20,7 @@ pub trait RequestTraceIps<'a, S> {
 
 impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
-        let trusted_proxy_list = &self.state().settings.trusted_proxy_list;
+        let trusted_proxy_list = &self.state().trusted_proxies;
 
         let is_trusted_ip =
             |ip: &&IpAddr| trusted_proxy_list.iter().any(|range| range.contains(*ip));
@@ -87,7 +87,7 @@ mod tests {
         let _sys = actix::System::new("test");
         let state = EndpointState::default();
         assert_eq!(
-            state.settings.trusted_proxy_list.len(),
+            state.trusted_proxies.len(),
             0,
             "Precondition: no trusted proxies by default"
         );
@@ -108,8 +108,10 @@ mod tests {
     #[test]
     fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
         let _sys = actix::System::new("test");
-        let mut state = EndpointState::default();
-        state.settings.trusted_proxy_list = vec!["5.6.7.8/32".parse()?];
+        let state = EndpointState {
+            trusted_proxies: vec!["5.6.7.8/32".parse()?],
+            ..EndpointState::default()
+        };
 
         let req = TestRequest::with_state(state)
             .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
@@ -127,8 +129,10 @@ mod tests {
     #[test]
     fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
         let _sys = actix::System::new("test");
-        let mut state = EndpointState::default();
-        state.settings.trusted_proxy_list = vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?];
+        let state = EndpointState {
+            trusted_proxies: vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?],
+            ..EndpointState::default()
+        };
 
         let req = TestRequest::with_state(state)
             .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
