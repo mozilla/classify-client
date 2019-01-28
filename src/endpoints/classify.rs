@@ -82,7 +82,7 @@ pub fn classify_client(
 
 #[cfg(test)]
 mod tests {
-    use crate::{endpoints::EndpointState, geoip::GeoIpActor, settings::Settings};
+    use crate::{endpoints::EndpointState, geoip::GeoIpActor};
     use actix_web::{http, test, HttpMessage};
     use chrono::DateTime;
     use maxminddb::geoip2;
@@ -124,10 +124,7 @@ mod tests {
                     GeoIpActor::builder().path(&path).build().unwrap()
                 })
             },
-            settings: Settings {
-                trusted_proxy_list: vec!["127.0.0.1/32".parse().unwrap()],
-                ..Settings::default()
-            },
+            trusted_proxies: vec!["127.0.0.1/32".parse().unwrap()],
             ..EndpointState::default()
         })
         .start(|app| app.handler(&super::classify_client));

@@ -2,25 +2,27 @@ pub mod classify;
 pub mod debug;
 pub mod dockerflow;
 
-use std::default::Default;
+use std::{default::Default, path::PathBuf};
 
-use crate::{geoip::GeoIpActor, logging::MozLogger, settings::Settings, APP_NAME};
+use crate::{geoip::GeoIpActor, APP_NAME};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EndpointState {
     pub geoip: actix::Addr<GeoIpActor>,
-    pub settings: Settings,
-    pub log: MozLogger,
+    pub trusted_proxies: Vec<ipnet::IpNet>,
+    pub log: slog::Logger,
     pub metrics: cadence::StatsdClient,
+    pub version_file: PathBuf,
 }
 
 impl Default for EndpointState {
     fn default() -> Self {
         EndpointState {
-            settings: Settings::default(),
+            trusted_proxies: Vec::default(),
             geoip: actix::SyncArbiter::start(1, GeoIpActor::default),
-            log: MozLogger::default(),
+            log: slog::Logger::root(slog::Discard, slog::o!()),
             metrics: cadence::StatsdClient::from_sink(APP_NAME, cadence::NopMetricSink),
+            version_file: "./version.json".into(),
         }
     }
 }

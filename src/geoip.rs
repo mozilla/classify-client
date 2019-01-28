@@ -1,8 +1,23 @@
 use cadence::{prelude::*, StatsdClient};
 use maxminddb::{self, geoip2, MaxMindDBError};
-use std::{net::IpAddr, path::PathBuf};
+use std::{fmt, net::IpAddr, path::PathBuf};
 
 use crate::errors::ClassifyError;
+
+pub fn get_arbiter(path: PathBuf, metrics: StatsdClient) -> actix::Addr<GeoIpActor> {
+    actix::SyncArbiter::start(1, move || {
+        GeoIpActor::builder()
+            .path(&path.clone())
+            .metrics(metrics.clone())
+            .build()
+            .unwrap_or_else(|err| {
+                panic!(format!(
+                    "Could not open geoip database at {:?}: {}",
+                    path, err
+                ))
+            })
+    })
+}
 
 pub struct GeoIpActor {
     reader: Option<maxminddb::OwnedReader<'static>>,
@@ -18,6 +33,23 @@ impl Default for GeoIpActor {
 impl GeoIpActor {
     pub fn builder() -> GeoIpActorBuilder {
         GeoIpActorBuilder::default()
+    }
+}
+
+// maxminddb reader doesn't implement Debug, so we can't use #[derive(Debug)] on GeoIpActor.
+impl fmt::Debug for GeoIpActor {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "GeoIpActor {{ reader: {}, metrics: {:?} }}",
+            if self.reader.is_some() {
+                "Some(...)"
+            } else {
+                "none"
+            },
+            self.metrics
+        )?;
+        Ok(())
     }
 }
 
