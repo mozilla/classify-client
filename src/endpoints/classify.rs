@@ -101,6 +101,7 @@ mod tests {
                 geoname_id: None,
                 iso_code: Some("US".to_owned()),
                 names: None,
+                is_in_european_union: None,
             }),
             continent: None,
             registered_country: None,

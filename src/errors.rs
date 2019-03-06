@@ -1,5 +1,4 @@
 use actix_web::HttpResponse;
-use maxminddb::{self, MaxMindDBError};
 use serde_derive::Serialize;
 use std::fmt;
 
@@ -37,28 +36,6 @@ impl actix_web::error::ResponseError for ClassifyError {
     }
 }
 
-impl From<MaxMindDBError> for ClassifyError {
-    fn from(error: MaxMindDBError) -> Self {
-        match error {
-            MaxMindDBError::AddressNotFoundError(msg) => Self {
-                message: format!("AddressNotFound: {}", msg),
-            },
-            MaxMindDBError::InvalidDatabaseError(msg) => Self {
-                message: format!("InvalidDatabaseError: {}", msg),
-            },
-            MaxMindDBError::IoError(msg) => Self {
-                message: format!("IoError: {}", msg),
-            },
-            MaxMindDBError::MapError(msg) => Self {
-                message: format!("MapError: {}", msg),
-            },
-            MaxMindDBError::DecodingError(msg) => Self {
-                message: format!("DecodingError: {}", msg),
-            },
-        }
-    }
-}
-
 macro_rules! impl_from_error {
     ($error: ty) => {
         impl From<$error> for ClassifyError {
@@ -71,6 +48,7 @@ macro_rules! impl_from_error {
 
 impl_from_error!(actix_web::http::header::ToStrError);
 impl_from_error!(envy::Error);
-impl_from_error!(std::net::AddrParseError);
-impl_from_error!(std::io::Error);
 impl_from_error!(ipnet::AddrParseError);
+impl_from_error!(maxminddb::MaxMindDBError);
+impl_from_error!(std::io::Error);
+impl_from_error!(std::net::AddrParseError);

@@ -20,7 +20,7 @@ pub fn get_arbiter(path: PathBuf, metrics: StatsdClient) -> actix::Addr<GeoIpAct
 }
 
 pub struct GeoIpActor {
-    reader: Option<maxminddb::OwnedReader<'static>>,
+    reader: Option<maxminddb::Reader<Vec<u8>>>,
     metrics: StatsdClient,
 }
 
@@ -72,7 +72,7 @@ impl GeoIpActorBuilder {
 
     pub fn build(self) -> Result<GeoIpActor, ClassifyError> {
         let reader = match self.path {
-            Some(path) => Some(maxminddb::Reader::open(path)?),
+            Some(path) => Some(maxminddb::Reader::open_readfile(path)?),
             None => None,
         };
 
