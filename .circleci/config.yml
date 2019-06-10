@@ -17,6 +17,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Dependencies
+          command: |
+            apt-get update
+            apt-get install sudo
+      - run:
           name: Build
           command: cargo build --release
       - run:
