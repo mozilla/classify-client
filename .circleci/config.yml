@@ -34,6 +34,8 @@ jobs:
             # we run it with sudo.
             CARGO=$(which cargo)
             KCOV=$(which kcov)
+            echo "cargo is: $CARGO"
+            echo "kcov is: $KCOV"
             sudo $CARGO kcov --kcov $KCOV
       - codecov/upload:
           file: target/cov/
