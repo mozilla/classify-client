@@ -33,7 +33,8 @@ jobs:
             # Cargo is not on root's path, so get the path as our user before
             # we run it with sudo.
             CARGO=$(which cargo)
-            sudo $CARGO kcov
+            KCOV=$(which kcov)
+            sudo $CARGO kcov --kcov $KCOV
       - codecov/upload:
           file: target/cov/
           flags: flags cargo_kcov
