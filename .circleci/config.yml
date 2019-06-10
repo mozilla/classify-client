@@ -30,14 +30,9 @@ jobs:
       - run:
           name: Coverage
           command: |
-            # Cargo is not on root's path, so get the path as our user before
-            # we run it with sudo.
-            echo "whoami -> $(whoami)"
+            # Since cargo is no on the normal path, sudo can't find it.
             CARGO=$(which cargo)
-            KCOV=$(which kcov)
-            echo "cargo is $CARGO"
-            echo "kcov is $KCOV"
-            sudo $CARGO kcov --kcov $KCOV
+            sudo -E $CARGO kcov
       - codecov/upload:
           file: target/cov/
           flags: flags cargo_kcov
