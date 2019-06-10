@@ -24,7 +24,7 @@ jobs:
           command: cargo test --release
       - run:
           name: Coverage
-          command: cargo kcov
+          command: sudo cargo kcov
       - codecov/upload:
           file: target/cov/
           flags: flags cargo_kcov
