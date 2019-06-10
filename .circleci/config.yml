@@ -29,7 +29,7 @@ jobs:
           command: cargo test --release
       - run:
           name: Coverage
-          command:
+          command: |
             # Cargo is not on root's path, so get the path as our user before
             # we run it with sudo.
             echo "whoami -> $(whoami)"
