@@ -178,33 +178,4 @@ jobs:
 workflows:
   test:
     jobs:
-      - test
-      - lint
-
-  build-publish:
-    jobs:
-      - test:
-          filters:
-            tags:
-              only: /.*/
-
-      - lint:
-          filters:
-            tags:
-              only: /.*/
-
-      - build:
-          filters:
-            tags:
-              only: /.*/
-
-      - publish:
-          requires:
-            - test
-            - lint
-            - build
-          filters:
-            tags:
-              only: /.*/
-            branches:
-              only: master
+      - test-machine
