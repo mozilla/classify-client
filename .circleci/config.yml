@@ -12,24 +12,6 @@ orbs:
 
 
 jobs:
-  test:
-    docker:
-      - image: mozilla/cidockerbases:rust-2019-04-10
-    steps:
-      - checkout
-      - run:
-          name: Build
-          command: cargo build --release
-      - run:
-          name: Test
-          command: cargo test --release
-      - run:
-          name: Coverage
-          command: cargo kcov
-      - codecov/upload:
-          file: target/cov/
-          flags: flags cargo_kcov
-
   test-machine:
     machine:
       image: circleci/classic:latest
@@ -59,17 +41,18 @@ jobs:
     - run:
         name: Setup
         command: |
-          sudo apt-get upgrade -y && \
+          set -eux
+          sudo apt-get upgrade -y
           sudo apt-get install -y cmake g++ pkg-config jq libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
           cargo install cargo-kcov
-          mkdir -p /tmp/kcov && \
-          cd /tmp/kcov && \
+          mkdir -p /tmp/kcov
+          cd /tmp/kcov
           cargo kcov --print-install-kcov-sh | sh
-          rustup component add rustfmt && \
-          rustup component add clippy && \
+          rustup component add rustfmt
+          rustup component add clippy
           cargo install cargo-audit
           # Cleanup
-          apt-get clean && \
+          apt-get clean
           rm -rf /tmp/kcov
     - run:
         name: Build
@@ -86,94 +69,6 @@ jobs:
         command: |
           cd classify-client
           cargo kcov
-    - run:
-        name: Upload Coverage Results
-        command: |
-          cd classify-client
-          curl -s https://codecov.io/bash | bash -s -- \
-            -f "target/cov/" \
-            -t "${CODECOV_TOKEN}" \
-            -n "${CIRCLE_BUILD_NUM}" \
-            -y ".codecov.yml" \
-            -F "flags cargo_kcov" \
-            -Z || echo 'Codecov upload failed'
-        when: always
-
-  lint:
-    docker:
-      - image: mozilla/cidockerbases:rust-2019-04-10
-    steps:
-      - checkout
-      - run:
-          name: Rustfmt
-          command: cargo fmt -- --check
-      - run:
-          name: Clippy
-          command: cargo clippy --all-targets --all-features
-      - run:
-          name: Package Audit
-          command: cargo audit
-
-
-  build:
-    docker:
-      - image: mozilla/cidockerbases:docker-2019-01-09
-    working_directory: /dockerflow
-    steps:
-      - checkout
-      - setup_remote_docker
-
-      - run:
-          name: Create a version.json
-          command: |
-            # create a version.json per https://github.com/mozilla-services/Dockerflow/blob/master/docs/version_object.md
-            printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' \
-            "$CIRCLE_SHA1" \
-            "$CIRCLE_TAG" \
-            "$CIRCLE_PROJECT_USERNAME" \
-            "$CIRCLE_PROJECT_REPONAME" \
-            "$CIRCLE_BUILD_URL" > version.json
-      - run:
-          name: Build Docker image
-          command: docker build -t app:build .
-
-      # save the built docker container into CircleCI's cache. This is
-      # required since Workflows do not have the same remote docker instance.
-      - run:
-          name: docker save app:build
-          command: |
-            mkdir -p /cache
-            docker save -o /cache/docker.tar "app:build"
-      - save_cache:
-          key: v1-{{ .Branch }}-{{epoch}}
-          paths:
-            - /cache/docker.tar
-
-  publish:
-    docker:
-      - image: mozilla/cidockerbases:docker-2019-01-09
-    steps:
-      - setup_remote_docker
-      - restore_cache:
-          key: v1-{{.Branch}}
-      - run:
-          name: Restore Docker image cache
-          command: docker load -i /cache/docker.tar
-
-      - run:
-          name: Deploy to Dockerhub
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-                IMAGE="${DOCKERHUB_REPO}:latest"
-            elif  [ ! -z "${CIRCLE_TAG}" ]; then
-                IMAGE="${DOCKERHUB_REPO}:${CIRCLE_TAG}"
-            else
-                echo "Refusing to push to dockerhub for non-master branch without tag"
-                exit 1
-            fi
-            docker login -u $DOCKER_USER -p $DOCKER_PASS
-            docker tag app:build $IMAGE
-            docker push $IMAGE
 
 workflows:
   test:
