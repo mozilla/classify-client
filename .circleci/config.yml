@@ -10,6 +10,7 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.4
 
+
 jobs:
   test:
     docker:
@@ -28,6 +29,75 @@ jobs:
       - codecov/upload:
           file: target/cov/
           flags: flags cargo_kcov
+
+  test-machine:
+    machine:
+      image: circleci/classic:latest
+    steps:
+    - checkout
+    - run:
+        name: Install rust
+        command: |
+          sudo apt-get update
+          RUSTUP_HOME=/usr/local/rustup
+          CARGO_HOME=/usr/local/cargo
+          RUST_VERSION=1.35.0
+          set -eux
+          rustArch='x86_64-unknown-linux-gnu'
+          rustupSha256='a46fe67199b7bcbbde2dcbc23ae08db6f29883e260e23899a88b9073effc9076'
+          url="https://static.rust-lang.org/rustup/archive/1.18.3/${rustArch}/rustup-init"
+          wget "$url"
+          echo "${rustupSha256} *rustup-init" | sha256sum -c -
+          chmod +x rustup-init
+          ./rustup-init -y --no-modify-path --default-toolchain $RUST_VERSION
+          rm rustup-init
+          echo "export PATH=$HOME/.cargo/bin:$PATH" >> $BASH_ENV
+          source $BASH_ENV
+          rustup --version
+          cargo --version
+          rustc --version
+    - run:
+        name: Setup
+        command: |
+          sudo apt-get upgrade -y && \
+          sudo apt-get install -y cmake g++ pkg-config jq libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
+          cargo install cargo-kcov
+          mkdir -p /tmp/kcov && \
+          cd /tmp/kcov && \
+          cargo kcov --print-install-kcov-sh | sh
+          rustup component add rustfmt && \
+          rustup component add clippy && \
+          cargo install cargo-audit
+          # Cleanup
+          apt-get clean && \
+          rm -rf /tmp/kcov
+    - run:
+        name: Build
+        command: |
+          cd classify-client
+          cargo build --release
+    - run:
+        name: Test
+        command: |
+          cd classify-client
+          cargo test --release
+    - run:
+        name: Coverage
+        command: |
+          cd classify-client
+          cargo kcov
+    - run:
+        name: Upload Coverage Results
+        command: |
+          cd classify-client
+          curl -s https://codecov.io/bash | bash -s -- \
+            -f "target/cov/" \
+            -t "${CODECOV_TOKEN}" \
+            -n "${CIRCLE_BUILD_NUM}" \
+            -y ".codecov.yml" \
+            -F "flags cargo_kcov" \
+            -Z || echo 'Codecov upload failed'
+        when: always
 
   lint:
     docker:
@@ -71,7 +141,9 @@ jobs:
       # required since Workflows do not have the same remote docker instance.
       - run:
           name: docker save app:build
-          command: mkdir -p /cache; docker save -o /cache/docker.tar "app:build"
+          command: |
+            mkdir -p /cache
+            docker save -o /cache/docker.tar "app:build"
       - save_cache:
           key: v1-{{ .Branch }}-{{epoch}}
           paths:
