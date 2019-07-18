@@ -1,7 +1,5 @@
 # Classify Client
 
- [![codecov](https://codecov.io/gh/mozilla/classify-client/branch/staging/graph/badge.svg)](https://codecov.io/gh/mozilla/classify-client)
-
 This is an optimized version of the classify client endpoint in [Normandy](https://github.com/mozilla/normandy).
 
 ## Dev instructions
@@ -61,4 +59,3 @@ The checks Therapist runs are:
 
 * Rustfmt
 * Clippy, using the `clippy::all` preset
-
