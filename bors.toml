@@ -1,4 +1,3 @@
 status = ["ci/circleci: build", "ci/circleci: test"]
 block_labels = ["bors-dont-merge"]
-required_approvals = 1
 delete_merged_branches = true
