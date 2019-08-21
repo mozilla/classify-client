@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 actix = "^0.7.6"
-actix-web = "^0.7.14"
+actix-web = "^0.7.19"
 cadence = "^0.16.0"
 chrono = { version = "^0.4", features = ["serde"] }
 envy = "^0.3.3"
