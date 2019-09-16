@@ -128,7 +128,7 @@ pub mod tests {
 
         match middleware.start(&request) {
             Ok(middleware::Started::Done) => (),
-            _ => assert!(false, "Middleware should return success synchronously"),
+            _ => panic!("Middleware should return success synchronously"),
         };
         assert_eq!(
             log.lock().unwrap().len(),
@@ -140,7 +140,7 @@ pub mod tests {
 
         match middleware.finish(&request, &response) {
             middleware::Finished::Done => (),
-            _ => assert!(false, "Middleware should finish synchronously"),
+            _ => panic!("Middleware should finish synchronously"),
         };
         let log = log.lock().unwrap();
         assert_eq!(log.len(), 3, "one metric should be logged by start");
