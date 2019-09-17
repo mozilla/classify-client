@@ -1,9 +1,10 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, APP_NAME};
 use actix_web::{
-    middleware::{Finished, Middleware, Started},
-    HttpRequest, HttpResponse,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    Error,
 };
 use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
+use futures::{future, Future, Poll};
 use std::{
     fmt::Display,
     net::{ToSocketAddrs, UdpSocket},
@@ -43,51 +44,80 @@ where
         .build())
 }
 
-pub struct ResponseMiddleware;
+pub struct ResponseTimer;
 
-struct RequestStart(Instant);
+impl<S, B> Transform<S> for ResponseTimer
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type InitError = ();
+    type Transform = ResponseTimerMiddleware<S>;
+    type Future = future::FutureResult<Self::Transform, Self::InitError>;
 
-impl Middleware<EndpointState> for ResponseMiddleware {
-    fn start(&self, req: &HttpRequest<EndpointState>) -> actix_web::Result<Started> {
-        req.extensions_mut().insert(RequestStart(Instant::now()));
-        req.state()
-            .metrics
-            .incr_with_tags("ongoing_requests")
-            .send();
-        Ok(Started::Done)
+    fn new_transform(&self, service: S) -> Self::Future {
+        future::ok(ResponseTimerMiddleware { service })
+    }
+}
+
+pub struct ResponseTimerMiddleware<S> {
+    service: S,
+}
+
+impl<S, B> Service for ResponseTimerMiddleware<S>
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.service.poll_ready()
     }
 
-    fn finish(&self, req: &HttpRequest<EndpointState>, resp: &HttpResponse) -> Finished {
-        if let Some(RequestStart(started)) = req.extensions().get::<RequestStart>() {
+    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+        let metrics = match req.app_data::<EndpointState>() {
+            Some(state) => state.metrics.clone(),
+            None => return Box::new(self.service.call(req)),
+        };
+        let started = Instant::now();
+
+        metrics.incr_with_tags("ongoing_requests").send();
+
+        Box::new(self.service.call(req).and_then(move |res| {
             let duration = started.elapsed();
-            req.state()
-                .metrics
+            metrics
                 .time_duration_with_tags("response", duration)
                 .with_tag(
                     "status",
-                    if resp.status().is_success() {
+                    if res.status().is_success() {
                         "success"
                     } else {
                         "error"
                     },
                 )
                 .send();
-        }
-        req.state()
-            .metrics
-            .decr_with_tags("ongoing_requests")
-            .send();
-        Finished::Done
+            metrics.decr_with_tags("ongoing_requests").send();
+            Ok(res)
+        }))
     }
 }
 
 #[cfg(test)]
 pub mod tests {
+    use super::*;
     use crate::endpoints::EndpointState;
     use actix_web::{
-        middleware::{self, Middleware},
-        test::TestRequest,
-        HttpResponse,
+        test::{self, TestRequest},
+        web, App, HttpResponse,
     };
     use cadence::StatsdClient;
     use regex::Regex;
@@ -111,65 +141,55 @@ pub mod tests {
 
     #[test]
     fn test_response_metrics_works() -> Result<(), Box<dyn std::error::Error>> {
-        let _sys = actix::System::new("test");
+        // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
             metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
             ..EndpointState::default()
         };
+        let mut service = test::init_service(App::new().data(state).wrap(ResponseTimer).route(
+            "/",
+            web::get().to(|| HttpResponse::InternalServerError().finish()),
+        ));
 
-        let request = TestRequest::with_state(state).finish();
-        let middleware = super::ResponseMiddleware;
-        assert_eq!(
-            log.lock().unwrap().len(),
-            0,
-            "no metrics should be logged yet"
-        );
+        // Make a request to that service
+        let request = TestRequest::with_uri("/").to_request();
+        test::call_service(&mut service, request);
 
-        match middleware.start(&request) {
-            Ok(middleware::Started::Done) => (),
-            _ => assert!(false, "Middleware should return success synchronously"),
-        };
-        assert_eq!(
-            log.lock().unwrap().len(),
-            1,
-            "one metric should be logged by start"
-        );
-
-        let response = HttpResponse::Ok().finish();
-
-        match middleware.finish(&request, &response) {
-            middleware::Finished::Done => (),
-            _ => assert!(false, "Middleware should finish synchronously"),
-        };
+        // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();
-        assert_eq!(log.len(), 3, "one metric should be logged by start");
+        assert_eq!(log.len(), 3, "three metrics should be logged");
 
+        // two for the ongoing request increment and then decrement
         assert_eq!(log[0], "test.ongoing_requests:1|c");
         assert_eq!(log[2], "test.ongoing_requests:-1|c");
 
+        // One for the overall status of the response
         let response_re = Regex::new(r"test.response:\d+|ms|#status:success")?;
         assert!(response_re.is_match(&log[1]));
 
         Ok(())
     }
 
+    /// Test that if a request fails, an error is reported in metrics
     #[test]
     fn test_response_metrics_logs_error() -> Result<(), Box<dyn std::error::Error>> {
-        let _sys = actix::System::new("test");
+        // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
             metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
             ..EndpointState::default()
         };
+        let mut service = test::init_service(App::new().data(state).wrap(ResponseTimer).route(
+            "/",
+            web::get().to(|| HttpResponse::InternalServerError().finish()),
+        ));
 
-        let request = TestRequest::with_state(state).finish();
-        let response = HttpResponse::InternalServerError().finish();
-        let middleware = super::ResponseMiddleware;
+        // Make a request to that service
+        let request = TestRequest::with_uri("/").to_request();
+        test::call_service(&mut service, request);
 
-        middleware.start(&request).unwrap();
-        middleware.finish(&request, &response);
-
+        // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();
         let response_re = Regex::new(r"test.response:\d+|ms|#status:error")?;
         assert!(response_re.is_match(&log[1]));

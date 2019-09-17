@@ -1,4 +1,4 @@
-FROM rust:1.36-slim-stretch as build
+FROM rust:1.37-slim-stretch as build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     pkg-config curl libssl-dev

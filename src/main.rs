@@ -10,16 +10,15 @@ pub mod metrics;
 pub mod settings;
 pub mod utils;
 
-use actix_web::App;
-use sentry;
-use sentry_actix::SentryMiddleware;
-use slog;
-
 use crate::{
     endpoints::{classify, debug, dockerflow, EndpointState},
     errors::ClassifyError,
+    geoip::GeoIp,
     settings::Settings,
 };
+use actix_web::{web, App};
+use slog;
+use std::sync::Arc;
 
 const APP_NAME: &str = "classify-client";
 
@@ -31,15 +30,10 @@ fn main() -> Result<(), ClassifyError> {
         human_logs,
         metrics_target,
         port,
-        sentry_dsn,
         trusted_proxy_list,
         version_file,
+        ..
     } = Settings::load()?;
-
-    let _guard = sentry::init(sentry_dsn);
-    sentry::integrations::panic::register_panic_handler();
-
-    let sys = actix::System::new(APP_NAME);
 
     let app_log = logging::get_logger("app", human_logs);
 
@@ -51,7 +45,12 @@ fn main() -> Result<(), ClassifyError> {
     });
 
     let state = EndpointState {
-        geoip: geoip::get_arbiter(geoip_db_path, metrics.clone()),
+        geoip: Arc::new(
+            GeoIp::builder()
+                .path(geoip_db_path)
+                .metrics(metrics.clone())
+                .build()?,
+        ),
         metrics,
         trusted_proxies: trusted_proxy_list,
         log: app_log.clone(),
@@ -59,32 +58,34 @@ fn main() -> Result<(), ClassifyError> {
     };
 
     let addr = format!("{}:{}", host, port);
-    let server = actix_web::server::new(move || {
-        let mut app = App::with_state(state.clone())
-            .middleware(SentryMiddleware::new())
-            .middleware(metrics::ResponseMiddleware)
-            .middleware(logging::RequestLogMiddleware::new(human_logs))
+    slog::info!(app_log, "starting server on https://{}", addr);
+
+    actix_web::HttpServer::new(move || {
+        let mut app = App::new()
+            .data(state.clone())
+            .wrap(metrics::ResponseTimer)
+            .wrap(logging::RequestLogger)
             // API Endpoints
-            .resource("/", |r| r.get().f(classify::classify_client))
-            .resource("/api/v1/classify_client/", |r| {
-                r.get().f(classify::classify_client)
-            })
+            .service(web::resource("/").route(web::get().to(classify::classify_client)))
+            .service(
+                web::resource("/api/v1/classify_client/")
+                    .route(web::get().to(classify::classify_client)),
+            )
             // Dockerflow Endpoints
-            .resource("/__lbheartbeat__", |r| r.get().f(dockerflow::lbheartbeat))
-            .resource("/__heartbeat__", |r| r.get().f(dockerflow::heartbeat))
-            .resource("/__version__", |r| r.get().f(dockerflow::version));
+            .service(
+                web::resource("/__lbheartbeat__").route(web::get().to(dockerflow::lbheartbeat)),
+            )
+            .service(web::resource("/__heartbeat__").route(web::get().to(dockerflow::heartbeat)))
+            .service(web::resource("/__version__").route(web::get().to(dockerflow::version)));
 
         if debug {
-            app = app.resource("/debug", |r| r.get().f(debug::debug_handler));
+            app = app.service(web::resource("/debug").route(web::get().to(debug::debug_handler)));
         }
 
         app
     })
-    .bind(&addr)?;
-
-    server.start();
-    slog::info!(app_log, "started server on https://{}", addr);
-    sys.run();
+    .bind(&addr)?
+    .run()?;
 
     Ok(())
 }

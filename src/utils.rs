@@ -1,7 +1,6 @@
+use crate::{endpoints::EndpointState, errors::ClassifyError};
 use actix_web::HttpRequest;
 use std::net::IpAddr;
-
-use crate::{endpoints::EndpointState, errors::ClassifyError};
 
 pub trait RequestClientIp<S> {
     /// Determine the IP address of the client making a request, based on network
@@ -12,15 +11,18 @@ pub trait RequestClientIp<S> {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError>;
 }
 
-pub trait RequestTraceIps<'a, S> {
+pub trait RequestTraceIps<'a> {
     /// Iterate all known proxy and client IPs, starting with the IPs closest to
     /// the server, and ending with the alleged client.
     fn trace_ips(&'a self) -> Vec<IpAddr>;
 }
 
-impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
+impl RequestClientIp<EndpointState> for HttpRequest {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
-        let trusted_proxy_list = &self.state().trusted_proxies;
+        let trusted_proxy_list = &self
+            .app_data::<EndpointState>()
+            .expect("Expected app state")
+            .trusted_proxies;
 
         let is_trusted_ip =
             |ip: &&IpAddr| trusted_proxy_list.iter().any(|range| range.contains(*ip));
@@ -34,7 +36,7 @@ impl RequestClientIp<EndpointState> for HttpRequest<EndpointState> {
     }
 }
 
-impl<'a, S> RequestTraceIps<'a, S> for HttpRequest<S> {
+impl<'a> RequestTraceIps<'a> for HttpRequest {
     fn trace_ips(&'a self) -> Vec<IpAddr> {
         let mut trace: Vec<IpAddr> = Vec::new();
 
@@ -63,8 +65,8 @@ mod tests {
 
     #[test]
     fn trace_ip_works() {
-        let req =
-            TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12").finish();
+        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12")
+            .to_http_request();
         assert_eq!(
             req.trace_ips(),
             vec![
@@ -92,9 +94,9 @@ mod tests {
             "Precondition: no trusted proxies by default"
         );
 
-        let req = TestRequest::with_state(state)
-            .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .finish();
+        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+            .data(state)
+            .to_http_request();
 
         assert_eq!(
             req.client_ip()?,
@@ -113,9 +115,9 @@ mod tests {
             ..EndpointState::default()
         };
 
-        let req = TestRequest::with_state(state)
-            .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .finish();
+        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+            .data(state)
+            .to_http_request();
 
         assert_eq!(
             req.client_ip()?,
@@ -134,9 +136,9 @@ mod tests {
             ..EndpointState::default()
         };
 
-        let req = TestRequest::with_state(state)
-            .header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .finish();
+        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+            .data(state)
+            .to_http_request();
 
         assert!(
             req.client_ip().is_err(),
