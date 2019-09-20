@@ -1,14 +1,9 @@
+use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
 use actix_web::{http, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
-use futures::Future;
 use maxminddb::{self, geoip2};
 use serde::Serializer;
 use serde_derive::Serialize;
-use serde_json::json;
-
-use crate::{
-    endpoints::EndpointState, errors::ClassifyError, geoip::CountryForIp, utils::RequestClientIp,
-};
 
 #[derive(Serialize)]
 struct ClientClassification {
@@ -42,52 +37,37 @@ impl Default for ClientClassification {
     }
 }
 
-pub fn classify_client(
-    req: &HttpRequest<EndpointState>,
-) -> Box<dyn Future<Item = HttpResponse, Error = ClassifyError>> {
-    // TODO this is the sort of thing that the try operator (`?`) is supposed to
-    // be for. Is it possible to use the try operator with `Box<dyn Future<_>>`?
-    let ip = match req.client_ip() {
-        Ok(v) => v,
-        Err(err) => {
-            return Box::new(futures::future::err(err));
-        }
-    };
-
-    Box::new(
-        req.state()
-            .geoip
-            .send(CountryForIp::new(ip))
-            .and_then(move |country| {
-                let mut response = HttpResponse::Ok();
-                response.header(
-                    http::header::CACHE_CONTROL,
-                    "max-age=0, no-cache, no-store, must-revalidate",
-                );
-
-                let mut classification = ClientClassification::default();
-                match country {
-                    Ok(country) => {
-                        classification.country = country.clone();
-                        Ok(response.json(classification))
-                    }
-                    Err(err) => Ok(response
-                        .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .json(json!({ "error": format!("{}", err) }))),
-                }
-            })
-            .map_err(|err| ClassifyError::from_source("Future failure", err)),
-    )
+pub fn classify_client(req: HttpRequest) -> Result<HttpResponse, ClassifyError> {
+    req.app_data::<EndpointState>()
+        .expect("Could not get app state")
+        .geoip
+        .locate(req.client_ip()?)
+        .and_then(move |country| {
+            let mut response = HttpResponse::Ok();
+            response.header(
+                http::header::CACHE_CONTROL,
+                "max-age=0, no-cache, no-store, must-revalidate",
+            );
+            Ok(response.json(ClientClassification {
+                country,
+                ..Default::default()
+            }))
+        })
+        .map_err(|err| ClassifyError::from_source("Future failure", err))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{endpoints::EndpointState, geoip::GeoIpActor};
-    use actix_web::{http, test, HttpMessage};
+    use crate::{endpoints::EndpointState, geoip::GeoIp};
+    use actix_web::{
+        http,
+        test::{self, TestRequest},
+        web, App,
+    };
     use chrono::DateTime;
     use maxminddb::geoip2;
     use serde_json::{json, Value};
-    use std::collections::HashSet;
+    use std::{collections::HashSet, sync::Arc};
 
     #[test]
     fn test_classification_serialization() {
@@ -117,28 +97,25 @@ mod tests {
     }
 
     #[test]
-    fn test_classify_endpoint() {
-        let mut srv = test::TestServer::build_with_state(|| EndpointState {
-            geoip: {
-                let path = "./GeoLite2-Country.mmdb";
-                actix::SyncArbiter::start(1, move || {
-                    GeoIpActor::builder().path(&path).build().unwrap()
-                })
-            },
+    fn test_classify_endpoint() -> Result<(), Box<dyn std::error::Error>> {
+        let state = EndpointState {
+            geoip: Arc::new(
+                GeoIp::builder()
+                    .path("./GeoLite2-Country.mmdb")
+                    .build()
+                    .unwrap(),
+            ),
             trusted_proxies: vec!["127.0.0.1/32".parse().unwrap()],
             ..EndpointState::default()
-        })
-        .start(|app| app.handler(&super::classify_client));
+        };
+        let mut service = test::init_service(
+            App::new()
+                .data(state)
+                .route("/", web::get().to(super::classify_client)),
+        );
 
-        let req = srv
-            .get()
-            .header("x-forwarded-for", "1.2.3.4")
-            .finish()
-            .unwrap();
-        let resp = srv.execute(req.send()).unwrap();
-        assert_eq!(resp.status(), http::StatusCode::OK);
-
-        let value: serde_json::Value = srv.execute(resp.json()).unwrap();
+        let request = TestRequest::with_header("x-forwarded-for", "1.2.3.4").to_request();
+        let value: serde_json::Value = test::read_response_json(&mut service, request);
         assert_eq!(
             *value.get("country").unwrap(),
             json!("US"),
@@ -152,17 +129,31 @@ mod tests {
             parse_result.is_ok(),
             "request time should be a valid timestamp"
         );
+
+        Ok(())
     }
 
     #[test]
     fn test_classify_endpoint_has_correct_cache_headers() {
-        let mut srv = test::TestServer::build_with_state(EndpointState::default)
-            .start(|app| app.handler(&super::classify_client));
+        let mut service = test::init_service(
+            App::new()
+                .data(EndpointState {
+                    geoip: Arc::new(
+                        GeoIp::builder()
+                            .path("./GeoLite2-Country.mmdb")
+                            .build()
+                            .unwrap(),
+                    ),
+                    ..EndpointState::default()
+                })
+                .route("/", web::get().to(super::classify_client)),
+        );
 
-        let req = srv.get().finish().unwrap();
-        let resp = srv.execute(req.send()).unwrap();
+        let request = TestRequest::with_header("x-forwarded-for", "1.2.3.4").to_request();
+        let response = test::call_service(&mut service, request);
 
-        let headers = resp.headers();
+        assert_eq!(response.status(), http::StatusCode::OK);
+        let headers = response.headers();
         assert!(
             headers.contains_key(http::header::CACHE_CONTROL),
             "a cache control header should be set"

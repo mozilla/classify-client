@@ -1,7 +1,6 @@
+use crate::errors::ClassifyError;
 use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-use crate::errors::ClassifyError;
 
 fn default_geoip_db_path() -> PathBuf {
     "./GeoLite2-Country.mmdb".into()

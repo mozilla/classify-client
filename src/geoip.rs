@@ -1,95 +1,19 @@
+use crate::errors::ClassifyError;
 use cadence::{prelude::*, StatsdClient};
 use maxminddb::{self, geoip2, MaxMindDBError};
 use std::{fmt, net::IpAddr, path::PathBuf};
 
-use crate::errors::ClassifyError;
-
-pub fn get_arbiter(path: PathBuf, metrics: StatsdClient) -> actix::Addr<GeoIpActor> {
-    actix::SyncArbiter::start(1, move || {
-        GeoIpActor::builder()
-            .path(&path.clone())
-            .metrics(metrics.clone())
-            .build()
-            .unwrap_or_else(|err| {
-                panic!(format!(
-                    "Could not open geoip database at {:?}: {}",
-                    path, err
-                ))
-            })
-    })
-}
-
-pub struct GeoIpActor {
+pub struct GeoIp {
     reader: Option<maxminddb::Reader<Vec<u8>>>,
     metrics: StatsdClient,
 }
 
-impl Default for GeoIpActor {
-    fn default() -> Self {
-        Self::builder().build().unwrap()
-    }
-}
-
-impl GeoIpActor {
-    pub fn builder() -> GeoIpActorBuilder {
-        GeoIpActorBuilder::default()
-    }
-}
-
-// maxminddb reader doesn't implement Debug, so we can't use #[derive(Debug)] on GeoIpActor.
-impl fmt::Debug for GeoIpActor {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "GeoIpActor {{ reader: {}, metrics: {:?} }}",
-            if self.reader.is_some() {
-                "Some(...)"
-            } else {
-                "none"
-            },
-            self.metrics
-        )?;
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-pub struct GeoIpActorBuilder {
-    path: Option<PathBuf>,
-    metrics: Option<StatsdClient>,
-}
-
-impl GeoIpActorBuilder {
-    pub fn path<P: Into<PathBuf>>(mut self, path: P) -> Self {
-        self.path = Some(path.into());
-        self
+impl GeoIp {
+    pub fn builder() -> GeoIpBuilder {
+        GeoIpBuilder::default()
     }
 
-    pub fn metrics(mut self, metrics: StatsdClient) -> Self {
-        self.metrics = Some(metrics);
-        self
-    }
-
-    pub fn build(self) -> Result<GeoIpActor, ClassifyError> {
-        let reader = match self.path {
-            Some(path) => Some(maxminddb::Reader::open_readfile(path)?),
-            None => None,
-        };
-
-        let metrics: StatsdClient = self
-            .metrics
-            .unwrap_or_else(|| StatsdClient::from_sink("default", cadence::NopMetricSink));
-
-        Ok(GeoIpActor { reader, metrics })
-    }
-}
-
-impl<'a> actix::Actor for GeoIpActor {
-    type Context = actix::SyncContext<Self>;
-}
-
-impl GeoIpActor {
-    fn locate(&self, ip: IpAddr) -> Result<Option<geoip2::Country>, ClassifyError> {
+    pub fn locate(&self, ip: IpAddr) -> Result<Option<geoip2::Country>, ClassifyError> {
         self.reader
             .as_ref()
             .ok_or_else(|| ClassifyError::new("No geoip database available"))?
@@ -120,26 +44,59 @@ impl GeoIpActor {
     }
 }
 
-impl actix::Handler<CountryForIp> for GeoIpActor {
-    type Result = Result<Option<geoip2::Country>, ClassifyError>;
-
-    fn handle(&mut self, msg: CountryForIp, _: &mut Self::Context) -> Self::Result {
-        self.locate(msg.ip)
+impl Default for GeoIp {
+    fn default() -> Self {
+        GeoIp::builder().build().unwrap()
     }
 }
 
-pub struct CountryForIp {
-    ip: IpAddr,
-}
-
-impl CountryForIp {
-    pub fn new(ip: IpAddr) -> Self {
-        Self { ip }
+// // maxminddb reader doesn't implement Debug, so we can't use #[derive(Debug)] on GeoIp.
+impl fmt::Debug for GeoIp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "GeoIpActor {{ reader: {}, metrics: {:?} }}",
+            if self.reader.is_some() {
+                "Some(...)"
+            } else {
+                "None"
+            },
+            self.metrics
+        )?;
+        Ok(())
     }
 }
 
-impl actix::Message for CountryForIp {
-    type Result = Result<Option<geoip2::Country>, ClassifyError>;
+#[derive(Clone, Debug, Default)]
+pub struct GeoIpBuilder {
+    path: Option<PathBuf>,
+    metrics: Option<StatsdClient>,
+}
+
+impl GeoIpBuilder {
+    pub fn path<P>(mut self, path: P) -> Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.path = Some(path.into());
+        self
+    }
+
+    pub fn metrics(mut self, metrics: StatsdClient) -> Self {
+        self.metrics = Some(metrics);
+        self
+    }
+
+    pub fn build(self) -> Result<GeoIp, ClassifyError> {
+        let reader = match self.path {
+            Some(path) => Some(maxminddb::Reader::open_readfile(path)?),
+            None => None,
+        };
+        let metrics = self
+            .metrics
+            .unwrap_or_else(|| StatsdClient::from_sink("default", cadence::NopMetricSink));
+        Ok(GeoIp { reader, metrics })
+    }
 }
 
 #[cfg(test)]
@@ -153,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_geoip_works() -> Result<(), Box<dyn std::error::Error>> {
-        let geoip = super::GeoIpActor::builder()
+        let geoip = super::GeoIp::builder()
             .path("./GeoLite2-Country.mmdb")
             .build()?;
 
@@ -167,7 +124,7 @@ mod tests {
     fn test_geoip_sends_metrics() -> Result<(), Box<dyn std::error::Error>> {
         let log = Arc::new(Mutex::new(Vec::new()));
         let metrics = StatsdClient::from_sink("test", TestMetricSink { log: log.clone() });
-        let geoip = super::GeoIpActor::builder()
+        let geoip = super::GeoIp::builder()
             .path("./GeoLite2-Country.mmdb")
             .metrics(metrics)
             .build()?;
