@@ -127,38 +127,6 @@ where
     }
 }
 
-// pub struct RequestLogMiddleware {
-//     log: slog::Logger,
-// }
-
-// impl RequestLogMiddleware {
-//     pub fn new(human_logs: bool) -> Self {
-//         RequestLogMiddleware {
-//             log: get_logger("request.summary", human_logs),
-//         }
-//     }
-// }
-
-// impl<S> Middleware<S> for RequestLogMiddleware {
-//     fn start(&self, _req: &HttpRequest<S>) -> Result<Started> {
-//         Ok(Started::Done)
-//     }
-
-//     fn finish(&self, request: &HttpRequest<S>, resp: &HttpResponse) -> Finished {
-//         let fields = MozLogFields::new(request, resp);
-//         slog::info!(self.log, "" ; slog::o!(fields));
-//         Finished::Done
-//     }
-// }
-
-// impl Default for RequestLogMiddleware {
-//     fn default() -> Self {
-//         Self {
-//             log: slog::Logger::root(slog::Discard, slog::o!()),
-//         }
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use crate::logging::MozLogFields;
