@@ -10,7 +10,7 @@ version = "0.2.0"
 [dependencies]
 actix = "^0.7"
 actix-web = "^1"
-cadence = "^0.16.0"
+cadence = "^0.19.0"
 envy = "^0.3.3"
 futures = "^0.1.29"
 lazy_static = "^1.2.0"
