@@ -17,7 +17,7 @@ struct HeartbeatResponse {
 }
 
 pub fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
-    let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
+    let ip = IpAddr::V4(Ipv4Addr::new(7, 7, 7, 7));
 
     app_data
         .geoip
