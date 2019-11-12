@@ -17,7 +17,7 @@ struct HeartbeatResponse {
 }
 
 pub fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
-    let ip = IpAddr::V4(Ipv4Addr::new(7, 7, 7, 7));
+    let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
     app_data
         .geoip
@@ -26,7 +26,7 @@ pub fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, Classify
             Some(country_info) => country_info
                 .country
                 .and_then(|country| country.iso_code)
-                .and_then(|iso_code| Some(Ok(iso_code == "US")))
+                .and_then(|iso_code| Some(Ok(iso_code.len() > 0)))
                 .unwrap_or(Ok(false)),
             None => Ok(false),
         })
