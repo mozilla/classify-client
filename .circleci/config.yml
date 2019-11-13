@@ -33,8 +33,10 @@ jobs:
           command: cargo clippy --all-targets --all-features
       - run:
           name: Package Audit
-          command: cargo audit
-
+          command: >
+            mkdir -p ~/.cargo
+            cp .cargo/audit.toml ~/.cargo/audit.toml
+            cargo audit
 
   build:
     docker:

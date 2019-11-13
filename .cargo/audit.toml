@@ -1,0 +1,7 @@
+# Note: This file does not work from where it is. It must be copied into your
+# home directory, at the path ~/.cargo/audit.toml to work.
+
+[advisories]
+ignore = [
+    "RUSTSEC-2018-0015" # term is looking for a new maintainer, not a directy securit problem
+]
