@@ -114,7 +114,7 @@ mod tests {
                 .route("/", web::get().to(super::classify_client)),
         );
 
-        let request = TestRequest::with_header("x-forwarded-for", "1.2.3.4").to_request();
+        let request = TestRequest::with_header("x-forwarded-for", "7.7.7.7").to_request();
         let value: serde_json::Value = test::read_response_json(&mut service, request);
         assert_eq!(
             *value.get("country").unwrap(),

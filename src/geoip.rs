@@ -114,7 +114,7 @@ mod tests {
             .path("./GeoLite2-Country.mmdb")
             .build()?;
 
-        let ip = "1.2.3.4".parse()?;
+        let ip = "7.7.7.7".parse()?;
         let rv = geoip.locate(ip).unwrap().unwrap();
         assert_eq!(rv.country.unwrap().iso_code.unwrap(), "US");
         Ok(())
@@ -129,7 +129,7 @@ mod tests {
             .metrics(metrics)
             .build()?;
 
-        geoip.locate("1.2.3.4".parse()?)?;
+        geoip.locate("7.7.7.7".parse()?)?;
         geoip.locate("127.0.0.1".parse()?)?;
 
         assert_eq!(
