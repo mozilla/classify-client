@@ -26,7 +26,7 @@ pub fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, Classify
             Some(country_info) => country_info
                 .country
                 .and_then(|country| country.iso_code)
-                .and_then(|iso_code| Some(Ok(iso_code.len() > 0)))
+                .and_then(|iso_code| Some(Ok(!iso_code.is_empty())))
                 .unwrap_or(Ok(false)),
             None => Ok(false),
         })
