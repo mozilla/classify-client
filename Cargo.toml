@@ -23,7 +23,7 @@ slog = "^2.4"
 slog-async = "2.3.0"
 slog-json = "2.3.0"
 slog-mozlog-json = "0.1.0"
-slog-term = "2.4.1"
+slog-term = "2.8.0"
 slog_derive = "0.1.1"
 
 [dependencies.chrono]
