@@ -15,10 +15,8 @@ This project should run on the latest stable version of Rust. Unstable features 
 
 ### GeoIP Database
 
-A GeoIP database will be downloaded automatically during the build.
-
-> Note: It relies on `curl` and `tar` commands. See `build.rs` for insights about how to obtain
-> the file manually in case the `.mmdb` file does not show up in the current folder.
+A GeoIP database will need to be provided. By default it is expected to be
+found at `./GeoLite2-Country.mmdb`.
 
 ## Configuration
 
