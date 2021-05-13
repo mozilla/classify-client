@@ -6,18 +6,18 @@ use serde::Serializer;
 use serde_derive::Serialize;
 
 #[derive(Serialize)]
-struct ClientClassification {
+struct ClientClassification<'a> {
     request_time: DateTime<Utc>,
 
     #[serde(serialize_with = "country_iso_code")]
-    country: Option<geoip2::Country>,
+    country: Option<geoip2::Country<'a>>,
 }
 
 fn country_iso_code<S: Serializer>(
     country_info: &Option<geoip2::Country>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    let iso_code: Option<String> = country_info
+    let iso_code: Option<&str> = country_info
         .clone()
         .and_then(|country_info| country_info.country)
         .and_then(|country| country.iso_code);
@@ -28,7 +28,7 @@ fn country_iso_code<S: Serializer>(
     }
 }
 
-impl Default for ClientClassification {
+impl<'a> Default for ClientClassification<'a> {
     fn default() -> Self {
         Self {
             request_time: Utc::now(),
@@ -79,7 +79,7 @@ mod tests {
         classification.country = Some(geoip2::Country {
             country: Some(geoip2::model::Country {
                 geoname_id: None,
-                iso_code: Some("US".to_owned()),
+                iso_code: Some("US"),
                 names: None,
                 is_in_european_union: None,
             }),

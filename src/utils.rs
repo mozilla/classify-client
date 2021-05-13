@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn get_client_ip_no_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new("test");
+        let _sys = actix::System::new();
         let state = EndpointState::default();
         assert_eq!(
             state.trusted_proxies.len(),
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new("test");
+        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?],
             ..EndpointState::default()
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new("test");
+        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?],
             ..EndpointState::default()
