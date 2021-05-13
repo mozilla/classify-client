@@ -80,7 +80,7 @@ fn main() -> Result<(), ClassifyError> {
         app
     })
     .bind(&addr)?
-    .run()?;
+    .run();
 
     Ok(())
 }

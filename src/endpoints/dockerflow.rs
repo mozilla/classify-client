@@ -16,7 +16,7 @@ struct HeartbeatResponse {
     geoip: bool,
 }
 
-pub fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
+pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
     let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
     app_data
@@ -60,37 +60,39 @@ mod tests {
         web, App,
     };
 
-    #[test]
-    fn lbheartbeat() {
+    #[actix_rt::test]
+    async fn lbheartbeat() {
         let mut service =
-            test::init_service(App::new().route("/", web::get().to(super::lbheartbeat)));
+            test::init_service(App::new().route("/", web::get().to(super::lbheartbeat))).await;
         let req = TestRequest::default().to_request();
-        let res = test::call_service(&mut service, req);
+        let res = test::call_service(&mut service, req).await;
         assert_eq!(res.status(), http::StatusCode::OK);
     }
 
-    #[test]
-    fn heartbeat() {
+    #[actix_rt::test]
+    async fn heartbeat() {
         let mut service = test::init_service(
             App::new()
                 .data(EndpointState::default())
                 .route("/", web::get().to(super::heartbeat)),
-        );
+        )
+        .await;
         let request = TestRequest::default().to_request();
-        let response = test::call_service(&mut service, request);
+        let response = test::call_service(&mut service, request).await;
         // Should return service unavailable since there is no geoip set up
         assert_eq!(response.status(), http::StatusCode::SERVICE_UNAVAILABLE);
     }
 
-    #[test]
-    fn version() -> Result<(), Box<dyn std::error::Error>> {
+    #[actix_rt::test]
+    async fn version() -> Result<(), Box<dyn std::error::Error>> {
         let mut service = test::init_service(
             App::new()
                 .data(EndpointState::default())
                 .route("/", web::get().to(super::version)),
-        );
+        )
+        .await;
         let request = TestRequest::default().to_request();
-        let response = test::call_service(&mut service, request);
+        let response = test::call_service(&mut service, request).await;
         let status = response.status();
         assert_eq!(status, http::StatusCode::OK);
         Ok(())

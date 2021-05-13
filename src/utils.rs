@@ -94,7 +94,7 @@ mod tests {
         );
 
         let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .data(state)
+            .app_data(state)
             .to_http_request();
 
         assert_eq!(
@@ -115,7 +115,7 @@ mod tests {
         };
 
         let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .data(state)
+            .app_data(state)
             .to_http_request();
 
         assert_eq!(
@@ -136,7 +136,7 @@ mod tests {
         };
 
         let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .data(state)
+            .app_data(state)
             .to_http_request();
 
         assert!(
