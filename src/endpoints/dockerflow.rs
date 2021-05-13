@@ -26,18 +26,18 @@ pub fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, Classify
             Some(country_info) => country_info
                 .country
                 .and_then(|country| country.iso_code)
-                .and_then(|iso_code| Some(Ok(!iso_code.is_empty())))
+                .map(|iso_code| Ok(!iso_code.is_empty()))
                 .unwrap_or(Ok(false)),
             None => Ok(false),
         })
-        .or_else(|_| Ok(false))
-        .and_then(|res| {
+        .or(Ok(false))
+        .map(|res| {
             let mut resp = if res {
                 HttpResponse::Ok()
             } else {
                 HttpResponse::ServiceUnavailable()
             };
-            Ok(resp.json(HeartbeatResponse { geoip: res }))
+            resp.json(HeartbeatResponse { geoip: res })
         })
 }
 

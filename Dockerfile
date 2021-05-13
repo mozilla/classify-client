@@ -1,4 +1,4 @@
-FROM rust:1.40-slim-stretch as build
+FROM rust:1.52-slim-buster as build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     pkg-config curl libssl-dev
@@ -9,7 +9,7 @@ RUN cargo build --release
 
 # -----
 
-FROM debian:stretch-slim as production
+FROM debian:buster-slim as production
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

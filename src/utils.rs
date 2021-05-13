@@ -29,8 +29,7 @@ impl RequestClientIp<EndpointState> for HttpRequest {
 
         self.trace_ips()
             .iter()
-            .skip_while(is_trusted_ip)
-            .next()
+            .find(|ip| !is_trusted_ip(ip))
             .ok_or_else(|| ClassifyError::new("Could not determine IP"))
             .map(|ip| *ip)
     }

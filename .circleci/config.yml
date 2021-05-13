@@ -10,7 +10,7 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: mozilla/cidockerbases:rust-2019-10-17
+      - image: mozilla/cidockerbases:rust-2021-05-12
     steps:
       - checkout
       - run:
@@ -22,7 +22,7 @@ jobs:
 
   lint:
     docker:
-      - image: mozilla/cidockerbases:rust-2019-10-17
+      - image: mozilla/cidockerbases:rust-2021-05-12
     steps:
       - checkout
       - run:
@@ -40,7 +40,7 @@ jobs:
 
   build:
     docker:
-      - image: mozilla/cidockerbases:docker-2019-10-17
+      - image: mozilla/cidockerbases:docker-2021-05-12
     working_directory: /dockerflow
     steps:
       - checkout
@@ -72,7 +72,7 @@ jobs:
 
   publish:
     docker:
-      - image: mozilla/cidockerbases:docker-2019-10-17
+      - image: mozilla/cidockerbases:docker-2021-05-12
     steps:
       - setup_remote_docker
       - restore_cache:

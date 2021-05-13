@@ -42,16 +42,16 @@ pub fn classify_client(req: HttpRequest) -> Result<HttpResponse, ClassifyError> 
         .expect("Could not get app state")
         .geoip
         .locate(req.client_ip()?)
-        .and_then(move |country| {
+        .map(move |country| {
             let mut response = HttpResponse::Ok();
             response.header(
                 http::header::CACHE_CONTROL,
                 "max-age=0, no-cache, no-store, must-revalidate",
             );
-            Ok(response.json(ClientClassification {
+            response.json(ClientClassification {
                 country,
                 ..Default::default()
-            }))
+            })
         })
         .map_err(|err| ClassifyError::from_source("Future failure", err))
 }

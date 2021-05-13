@@ -17,7 +17,6 @@ use crate::{
     settings::Settings,
 };
 use actix_web::{web, App};
-use slog;
 use std::sync::Arc;
 
 const APP_NAME: &str = "classify-client";
@@ -37,12 +36,8 @@ fn main() -> Result<(), ClassifyError> {
 
     let app_log = logging::get_logger("app", human_logs);
 
-    let metrics = metrics::get_client(metrics_target, app_log.clone()).unwrap_or_else(|err| {
-        panic!(format!(
-            "Critical failure setting up metrics logging: {}",
-            err
-        ))
-    });
+    let metrics = metrics::get_client(metrics_target, app_log.clone())
+        .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err));
 
     let state = EndpointState {
         geoip: Arc::new(

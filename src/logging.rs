@@ -4,10 +4,8 @@ use actix_web::{
 };
 use futures::{future, Future, Poll};
 use slog::{self, Drain};
-use slog_async;
 use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
-use slog_term;
 use std::io;
 
 use crate::endpoints::EndpointState;
