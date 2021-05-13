@@ -152,7 +152,7 @@ pub mod tests {
             metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(App::new().data(state).wrap(ResponseTimer).route(
+        let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
             "/",
             web::get().to(|| HttpResponse::InternalServerError().finish()),
         ))
@@ -186,7 +186,7 @@ pub mod tests {
             metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(App::new().data(state).wrap(ResponseTimer).route(
+        let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
             "/",
             web::get().to(|| HttpResponse::InternalServerError().finish()),
         ))

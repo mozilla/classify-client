@@ -62,7 +62,10 @@ impl MozLogFields {
             .get("Accept-Language")
             .and_then(|v| v.to_str().ok())
             .map(|v| v.to_string());
-        self.remote = request.connection_info().remote().map(|r| r.to_string());
+        self.remote = request
+            .connection_info()
+            .remote_addr()
+            .map(|r| r.to_string());
         self
     }
 
