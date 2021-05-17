@@ -4,6 +4,7 @@
 # DOCKER_EMAIL   - login info for docker hub
 # DOCKER_USER
 # DOCKER_PASS
+# GEOLITE_API_KEY
 #
 version: 2.1
 
@@ -13,6 +14,7 @@ jobs:
       - image: mozilla/cidockerbases:rust-2021-05-12
     steps:
       - checkout
+      - download-geolite
       - run:
           name: Build
           command: cargo build --release
@@ -56,6 +58,7 @@ jobs:
             "$CIRCLE_PROJECT_USERNAME" \
             "$CIRCLE_PROJECT_REPONAME" \
             "$CIRCLE_BUILD_URL" > version.json
+      - download-geolite
       - run:
           name: Build Docker image
           command: docker build -t app:build .
@@ -95,6 +98,21 @@ jobs:
             docker login -u $DOCKER_USER -p $DOCKER_PASS
             docker tag app:build $IMAGE
             docker push $IMAGE
+
+commands:
+  download-geolite:
+    steps:
+      - run:
+          name: Download GeoLite database
+          command: |
+            if [ "${GEOLITE_API_KEY}" == "" ]; then
+              echo "Can't fetch GeoLite database"
+              exit 1
+            fi
+            URL="https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${GEOLITE_API_KEY}&suffix=tar.gz"
+            wget "$URL" -O geolite.tar.gz
+            tar --strip-components=1 --wildcards -zxvf geolite.tar.gz -- '*/GeoLite2-Country.mmdb'
+            rm geolite.tar.gz
 
 workflows:
   test:
