@@ -6,18 +6,18 @@ use serde::Serializer;
 use serde_derive::Serialize;
 
 #[derive(Serialize)]
-struct ClientClassification {
+struct ClientClassification<'a> {
     request_time: DateTime<Utc>,
 
     #[serde(serialize_with = "country_iso_code")]
-    country: Option<geoip2::Country>,
+    country: Option<geoip2::Country<'a>>,
 }
 
 fn country_iso_code<S: Serializer>(
     country_info: &Option<geoip2::Country>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    let iso_code: Option<String> = country_info
+    let iso_code: Option<&str> = country_info
         .clone()
         .and_then(|country_info| country_info.country)
         .and_then(|country| country.iso_code);
@@ -28,7 +28,7 @@ fn country_iso_code<S: Serializer>(
     }
 }
 
-impl Default for ClientClassification {
+impl<'a> Default for ClientClassification<'a> {
     fn default() -> Self {
         Self {
             request_time: Utc::now(),
@@ -37,21 +37,21 @@ impl Default for ClientClassification {
     }
 }
 
-pub fn classify_client(req: HttpRequest) -> Result<HttpResponse, ClassifyError> {
+pub async fn classify_client(req: HttpRequest) -> Result<HttpResponse, ClassifyError> {
     req.app_data::<EndpointState>()
         .expect("Could not get app state")
         .geoip
         .locate(req.client_ip()?)
-        .and_then(move |country| {
+        .map(move |country| {
             let mut response = HttpResponse::Ok();
             response.header(
                 http::header::CACHE_CONTROL,
                 "max-age=0, no-cache, no-store, must-revalidate",
             );
-            Ok(response.json(ClientClassification {
+            response.json(ClientClassification {
                 country,
                 ..Default::default()
-            }))
+            })
         })
         .map_err(|err| ClassifyError::from_source("Future failure", err))
 }
@@ -69,8 +69,8 @@ mod tests {
     use serde_json::{json, Value};
     use std::{collections::HashSet, sync::Arc};
 
-    #[test]
-    fn test_classification_serialization() {
+    #[actix_rt::test]
+    async fn test_classification_serialization() {
         let mut classification = super::ClientClassification::default();
 
         let value = serde_json::to_value(&classification).unwrap();
@@ -79,7 +79,7 @@ mod tests {
         classification.country = Some(geoip2::Country {
             country: Some(geoip2::model::Country {
                 geoname_id: None,
-                iso_code: Some("US".to_owned()),
+                iso_code: Some("US"),
                 names: None,
                 is_in_european_union: None,
             }),
@@ -96,8 +96,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_classify_endpoint() -> Result<(), Box<dyn std::error::Error>> {
+    #[actix_rt::test]
+    async fn test_classify_endpoint() -> Result<(), Box<dyn std::error::Error>> {
         let state = EndpointState {
             geoip: Arc::new(
                 GeoIp::builder()
@@ -110,12 +110,13 @@ mod tests {
         };
         let mut service = test::init_service(
             App::new()
-                .data(state)
+                .app_data(state)
                 .route("/", web::get().to(super::classify_client)),
-        );
+        )
+        .await;
 
         let request = TestRequest::with_header("x-forwarded-for", "7.7.7.7").to_request();
-        let value: serde_json::Value = test::read_response_json(&mut service, request);
+        let value: serde_json::Value = test::read_response_json(&mut service, request).await;
         assert_eq!(
             *value.get("country").unwrap(),
             json!("US"),
@@ -133,11 +134,11 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_classify_endpoint_has_correct_cache_headers() {
+    #[actix_rt::test]
+    async fn test_classify_endpoint_has_correct_cache_headers() {
         let mut service = test::init_service(
             App::new()
-                .data(EndpointState {
+                .app_data(EndpointState {
                     geoip: Arc::new(
                         GeoIp::builder()
                             .path("./GeoLite2-Country.mmdb")
@@ -147,10 +148,11 @@ mod tests {
                     ..EndpointState::default()
                 })
                 .route("/", web::get().to(super::classify_client)),
-        );
+        )
+        .await;
 
         let request = TestRequest::with_header("x-forwarded-for", "1.2.3.4").to_request();
-        let response = test::call_service(&mut service, request);
+        let response = test::call_service(&mut service, request).await;
 
         assert_eq!(response.status(), http::StatusCode::OK);
         let headers = response.headers();

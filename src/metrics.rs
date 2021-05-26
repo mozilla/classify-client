@@ -4,10 +4,11 @@ use actix_web::{
     Error,
 };
 use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
-use futures::{future, Future, Poll};
+use futures::{future, task, Future, FutureExt};
 use std::{
     fmt::Display,
     net::{ToSocketAddrs, UdpSocket},
+    pin::Pin,
     time::Instant,
 };
 
@@ -57,7 +58,7 @@ where
     type Error = Error;
     type InitError = ();
     type Transform = ResponseTimerMiddleware<S>;
-    type Future = future::FutureResult<Self::Transform, Self::InitError>;
+    type Future = future::Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
         future::ok(ResponseTimerMiddleware { service })
@@ -77,36 +78,40 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
+    #[allow(clippy::clippy::type_complexity)]
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.service.poll_ready()
+    fn poll_ready(&mut self, ctx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(ctx)
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         let metrics = match req.app_data::<EndpointState>() {
             Some(state) => state.metrics.clone(),
-            None => return Box::new(self.service.call(req)),
+            None => return Box::pin(self.service.call(req)),
         };
         let started = Instant::now();
 
         metrics.incr_with_tags("ongoing_requests").send();
 
-        Box::new(self.service.call(req).and_then(move |res| {
-            let duration = started.elapsed();
-            metrics
-                .time_duration_with_tags("response", duration)
-                .with_tag(
-                    "status",
-                    if res.status().is_success() {
-                        "success"
-                    } else {
-                        "error"
-                    },
-                )
-                .send();
-            metrics.decr_with_tags("ongoing_requests").send();
-            Ok(res)
+        Box::pin(self.service.call(req).then(move |res| match res {
+            Ok(val) => {
+                let duration = started.elapsed();
+                metrics
+                    .time_duration_with_tags("response", duration)
+                    .with_tag(
+                        "status",
+                        if val.status().is_success() {
+                            "success"
+                        } else {
+                            "error"
+                        },
+                    )
+                    .send();
+                metrics.decr_with_tags("ongoing_requests").send();
+                future::ok(val)
+            }
+            Err(err) => future::err(err),
         }))
     }
 }
@@ -139,22 +144,23 @@ pub mod tests {
         }
     }
 
-    #[test]
-    fn test_response_metrics_works() -> Result<(), Box<dyn std::error::Error>> {
+    #[actix_rt::test]
+    async fn test_response_metrics_works() -> Result<(), Box<dyn std::error::Error>> {
         // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
             metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(App::new().data(state).wrap(ResponseTimer).route(
+        let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
             "/",
             web::get().to(|| HttpResponse::InternalServerError().finish()),
-        ));
+        ))
+        .await;
 
         // Make a request to that service
         let request = TestRequest::with_uri("/").to_request();
-        test::call_service(&mut service, request);
+        test::call_service(&mut service, request).await;
 
         // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();
@@ -172,22 +178,23 @@ pub mod tests {
     }
 
     /// Test that if a request fails, an error is reported in metrics
-    #[test]
-    fn test_response_metrics_logs_error() -> Result<(), Box<dyn std::error::Error>> {
+    #[actix_rt::test]
+    async fn test_response_metrics_logs_error() -> Result<(), Box<dyn std::error::Error>> {
         // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
             metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(App::new().data(state).wrap(ResponseTimer).route(
+        let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
             "/",
             web::get().to(|| HttpResponse::InternalServerError().finish()),
-        ));
+        ))
+        .await;
 
         // Make a request to that service
         let request = TestRequest::with_uri("/").to_request();
-        test::call_service(&mut service, request);
+        test::call_service(&mut service, request).await;
 
         // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();

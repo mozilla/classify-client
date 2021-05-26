@@ -29,8 +29,7 @@ impl RequestClientIp<EndpointState> for HttpRequest {
 
         self.trace_ips()
             .iter()
-            .skip_while(is_trusted_ip)
-            .next()
+            .find(|ip| !is_trusted_ip(ip))
             .ok_or_else(|| ClassifyError::new("Could not determine IP"))
             .map(|ip| *ip)
     }
@@ -86,7 +85,7 @@ mod tests {
 
     #[test]
     fn get_client_ip_no_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new("test");
+        let _sys = actix::System::new();
         let state = EndpointState::default();
         assert_eq!(
             state.trusted_proxies.len(),
@@ -95,7 +94,7 @@ mod tests {
         );
 
         let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .data(state)
+            .app_data(state)
             .to_http_request();
 
         assert_eq!(
@@ -109,14 +108,14 @@ mod tests {
 
     #[test]
     fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new("test");
+        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?],
             ..EndpointState::default()
         };
 
         let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .data(state)
+            .app_data(state)
             .to_http_request();
 
         assert_eq!(
@@ -130,14 +129,14 @@ mod tests {
 
     #[test]
     fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new("test");
+        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?],
             ..EndpointState::default()
         };
 
         let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .data(state)
+            .app_data(state)
             .to_http_request();
 
         assert!(

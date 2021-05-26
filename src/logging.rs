@@ -2,13 +2,11 @@ use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     Error, HttpRequest, HttpResponse,
 };
-use futures::{future, Future, Poll};
+use futures::{future, task, Future, FutureExt};
 use slog::{self, Drain};
-use slog_async;
 use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
-use slog_term;
-use std::io;
+use std::{io, pin::Pin};
 
 use crate::endpoints::EndpointState;
 
@@ -64,7 +62,10 @@ impl MozLogFields {
             .get("Accept-Language")
             .and_then(|v| v.to_str().ok())
             .map(|v| v.to_string());
-        self.remote = request.connection_info().remote().map(|r| r.to_string());
+        self.remote = request
+            .connection_info()
+            .remote_addr()
+            .map(|r| r.to_string());
         self
     }
 
@@ -87,7 +88,7 @@ where
     type Error = Error;
     type InitError = ();
     type Transform = RequestLoggerMiddleware<S>;
-    type Future = future::FutureResult<Self::Transform, Self::InitError>;
+    type Future = future::Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
         future::ok(RequestLoggerMiddleware { service })
@@ -107,22 +108,27 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
+    #[allow(clippy::clippy::type_complexity)]
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.service.poll_ready()
+    fn poll_ready(&mut self, ctx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(ctx)
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         let log = match req.app_data::<EndpointState>() {
             Some(state) => state.log.clone(),
-            None => return Box::new(self.service.call(req)),
+            None => return Box::pin(self.service.call(req)),
         };
 
-        Box::new(self.service.call(req).and_then(move |res| {
-            let fields = MozLogFields::new(&res);
-            slog::info!(log, "" ; slog::o!(fields));
-            Ok(res)
+        Box::pin(self.service.call(req).then(move |res| match res {
+            Ok(val) => {
+                let fields = MozLogFields::new(&val);
+                slog::info!(log, "" ; slog::o!(fields));
+                future::ok(val)
+            }
+
+            Err(err) => future::err(err),
         }))
     }
 }
