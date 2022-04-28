@@ -16,12 +16,16 @@ use crate::{
     geoip::GeoIp,
     settings::Settings,
 };
-use actix_web::{web, App};
+use actix_web::{
+    web::{self, Data},
+    App,
+};
 use std::sync::Arc;
 
 const APP_NAME: &str = "classify-client";
 
-fn main() -> Result<(), ClassifyError> {
+#[actix_web::main]
+async fn main() -> Result<(), ClassifyError> {
     let Settings {
         debug,
         geoip_db_path,
@@ -59,7 +63,7 @@ fn main() -> Result<(), ClassifyError> {
 
     actix_web::HttpServer::new(move || {
         let mut app = App::new()
-            .data(state.clone())
+            .app_data(Data::new(state.clone()))
             .wrap(metrics::ResponseTimer)
             .wrap(logging::RequestLogger)
             // API Endpoints
@@ -82,7 +86,8 @@ fn main() -> Result<(), ClassifyError> {
         app
     })
     .bind(&addr)?
-    .run();
+    .run()
+    .await?;
 
     Ok(())
 }

@@ -44,10 +44,10 @@ pub async fn classify_client(req: HttpRequest) -> Result<HttpResponse, ClassifyE
         .locate(req.client_ip()?)
         .map(move |country| {
             let mut response = HttpResponse::Ok();
-            response.header(
+            response.append_header((
                 http::header::CACHE_CONTROL,
                 "max-age=0, no-cache, no-store, must-revalidate",
-            );
+            ));
             response.json(ClientClassification {
                 country,
                 ..Default::default()
@@ -115,8 +115,10 @@ mod tests {
         )
         .await;
 
-        let request = TestRequest::with_header("x-forwarded-for", "7.7.7.7").to_request();
-        let value: serde_json::Value = test::read_response_json(&mut service, request).await;
+        let request = TestRequest::get()
+            .insert_header(("x-forwarded-for", "7.7.7.7"))
+            .to_request();
+        let value: serde_json::Value = test::call_and_read_body_json(&mut service, request).await;
         assert_eq!(
             *value.get("country").unwrap(),
             json!("US"),
@@ -151,7 +153,9 @@ mod tests {
         )
         .await;
 
-        let request = TestRequest::with_header("x-forwarded-for", "1.2.3.4").to_request();
+        let request = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4"))
+            .to_request();
         let response = test::call_service(&mut service, request).await;
 
         assert_eq!(response.status(), http::StatusCode::OK);

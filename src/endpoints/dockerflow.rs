@@ -7,7 +7,7 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-pub fn lbheartbeat() -> HttpResponse {
+pub async fn lbheartbeat() -> HttpResponse {
     HttpResponse::Ok().body("")
 }
 
@@ -41,7 +41,7 @@ pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, Cl
         })
 }
 
-pub fn version(app_data: Data<EndpointState>) -> HttpResponse {
+pub async fn version(app_data: Data<EndpointState>) -> HttpResponse {
     // Read the file or deliberately fail with a 500 if missing.
     let mut file = File::open(&app_data.version_file).unwrap();
     let mut data = String::new();
@@ -57,7 +57,8 @@ mod tests {
     use actix_web::{
         http,
         test::{self, TestRequest},
-        web, App,
+        web::{self, Data},
+        App,
     };
 
     #[actix_rt::test]
@@ -73,7 +74,7 @@ mod tests {
     async fn heartbeat() {
         let mut service = test::init_service(
             App::new()
-                .data(EndpointState::default())
+                .app_data(Data::new(EndpointState::default()))
                 .route("/", web::get().to(super::heartbeat)),
         )
         .await;
@@ -87,7 +88,7 @@ mod tests {
     async fn version() -> Result<(), Box<dyn std::error::Error>> {
         let mut service = test::init_service(
             App::new()
-                .data(EndpointState::default())
+                .app_data(Data::new(EndpointState::default()))
                 .route("/", web::get().to(super::version)),
         )
         .await;
