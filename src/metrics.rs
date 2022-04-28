@@ -98,7 +98,7 @@ where
             Ok(val) => {
                 let duration = started.elapsed();
                 metrics
-                    .time_duration_with_tags("response", duration)
+                    .time_with_tags("response", duration)
                     .with_tag(
                         "status",
                         if val.status().is_success() {
@@ -149,7 +149,10 @@ pub mod tests {
         // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
-            metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
+            metrics: Arc::new(StatsdClient::from_sink(
+                "test",
+                TestMetricSink { log: log.clone() },
+            )),
             ..EndpointState::default()
         };
         let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
@@ -183,7 +186,10 @@ pub mod tests {
         // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
-            metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
+            metrics: Arc::new(StatsdClient::from_sink(
+                "test",
+                TestMetricSink { log: log.clone() },
+            )),
             ..EndpointState::default()
         };
         let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
