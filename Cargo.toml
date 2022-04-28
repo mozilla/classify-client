@@ -3,7 +3,8 @@ authors = [
     "Michael Cooper <mcooper@mozilla.com>",
     "Mathieu Leplatre <mleplatre@mozilla.com>"
 ]
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 name = "classify-client"
 version = "0.2.0"
 

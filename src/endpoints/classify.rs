@@ -23,7 +23,7 @@ fn country_iso_code<S: Serializer>(
         .and_then(|country| country.iso_code);
 
     match iso_code {
-        Some(code) => serializer.serialize_str(&code),
+        Some(code) => serializer.serialize_str(code),
         None => serializer.serialize_none(),
     }
 }

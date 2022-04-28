@@ -26,7 +26,7 @@ impl GeoIp {
                     .and_then(|country| country.iso_code);
                 self.metrics
                     .incr_with_tags("location")
-                    .with_tag("country", &iso_code.unwrap_or("unknown"))
+                    .with_tag("country", iso_code.unwrap_or("unknown"))
                     .send();
                 country_info
             })
