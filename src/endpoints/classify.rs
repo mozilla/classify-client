@@ -77,7 +77,7 @@ mod tests {
         assert_eq!(*value.get("country").unwrap(), Value::Null);
 
         classification.country = Some(geoip2::Country {
-            country: Some(geoip2::model::Country {
+            country: Some(geoip2::country::Country {
                 geoname_id: None,
                 iso_code: Some("US"),
                 names: None,
