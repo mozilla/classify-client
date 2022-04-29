@@ -108,7 +108,7 @@ mod tests {
             trusted_proxies: vec!["127.0.0.1/32".parse().unwrap()],
             ..EndpointState::default()
         };
-        let mut service = test::init_service(
+        let service = test::init_service(
             App::new()
                 .app_data(state)
                 .route("/", web::get().to(super::classify_client)),
@@ -118,7 +118,7 @@ mod tests {
         let request = TestRequest::get()
             .insert_header(("x-forwarded-for", "7.7.7.7"))
             .to_request();
-        let value: serde_json::Value = test::call_and_read_body_json(&mut service, request).await;
+        let value: serde_json::Value = test::call_and_read_body_json(&service, request).await;
         assert_eq!(
             *value.get("country").unwrap(),
             json!("US"),
@@ -127,7 +127,7 @@ mod tests {
 
         let timestamp = value.get("request_time").unwrap().as_str().unwrap();
         // RFC 3339 is a stricter form of the ISO 8601 timestamp format.
-        let parse_result = DateTime::parse_from_rfc3339(&timestamp);
+        let parse_result = DateTime::parse_from_rfc3339(timestamp);
         assert!(
             parse_result.is_ok(),
             "request time should be a valid timestamp"
@@ -138,7 +138,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_classify_endpoint_has_correct_cache_headers() {
-        let mut service = test::init_service(
+        let service = test::init_service(
             App::new()
                 .app_data(EndpointState {
                     geoip: Arc::new(
@@ -156,7 +156,7 @@ mod tests {
         let request = TestRequest::get()
             .insert_header(("x-forwarded-for", "1.2.3.4"))
             .to_request();
-        let response = test::call_service(&mut service, request).await;
+        let response = test::call_service(&service, request).await;
 
         assert_eq!(response.status(), http::StatusCode::OK);
         let headers = response.headers();

@@ -151,7 +151,7 @@ pub mod tests {
             )),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(
+        let service = test::init_service(
             App::new()
                 .app_data(state)
                 .wrap(ResponseTimer)
@@ -161,7 +161,7 @@ pub mod tests {
 
         // Make a request to that service
         let request = TestRequest::with_uri("/").to_request();
-        test::call_service(&mut service, request).await;
+        test::call_service(&service, request).await;
 
         // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();
@@ -190,7 +190,7 @@ pub mod tests {
             )),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(
+        let service = test::init_service(
             App::new()
                 .app_data(state)
                 .wrap(ResponseTimer)
@@ -200,7 +200,7 @@ pub mod tests {
 
         // Make a request to that service
         let request = TestRequest::with_uri("/").to_request();
-        test::call_service(&mut service, request).await;
+        test::call_service(&service, request).await;
 
         // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();
