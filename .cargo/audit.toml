@@ -3,5 +3,19 @@
 
 [advisories]
 ignore = [
-    "RUSTSEC-2018-0015" # term is looking for a new maintainer, not a directy securit problem
+    # term is looking for a new maintainer, not a directy securit problem
+    "RUSTSEC-2018-0015",
+
+    # chrono has a rare data race that could theoretically lead to a segfault when a different
+    # thread sets an environment variable at the same time as the local time is read – see
+    # https://github.com/chronotope/chrono/issues/499 for details. We neither retrieve local
+    # times in this project at any point, nor do we set environment variables, so we are not
+    # affected by this. Currently, there is no version of chrono that is not affected by the
+    # issue, but a fix is being worked on in https://github.com/chronotope/chrono/pull/677.
+    # Older versions of the time crate are also affected by this issue. That crate occurs in
+    # the dependency graph in two different versions. The affected older version only gets
+    # pulled in as a dependency of chrono, see https://github.com/chronotope/chrono/issues/553.
+    # For the time being, I don't think we have any other option than ignoring these issues.
+    "RUSTSEC-2020-0071",
+    "RUSTSEC-2020-0159",
 ]

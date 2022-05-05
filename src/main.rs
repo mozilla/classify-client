@@ -16,12 +16,16 @@ use crate::{
     geoip::GeoIp,
     settings::Settings,
 };
-use actix_web::{web, App};
+use actix_web::{
+    web::{self, Data},
+    App,
+};
 use std::sync::Arc;
 
 const APP_NAME: &str = "classify-client";
 
-fn main() -> Result<(), ClassifyError> {
+#[actix_web::main]
+async fn main() -> Result<(), ClassifyError> {
     let Settings {
         debug,
         geoip_db_path,
@@ -36,14 +40,16 @@ fn main() -> Result<(), ClassifyError> {
 
     let app_log = logging::get_logger("app", human_logs);
 
-    let metrics = metrics::get_client(metrics_target, app_log.clone())
-        .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err));
+    let metrics = Arc::new(
+        metrics::get_client(metrics_target, app_log.clone())
+            .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err)),
+    );
 
     let state = EndpointState {
         geoip: Arc::new(
             GeoIp::builder()
                 .path(geoip_db_path)
-                .metrics(metrics.clone())
+                .metrics(Arc::clone(&metrics))
                 .build()?,
         ),
         metrics,
@@ -57,7 +63,7 @@ fn main() -> Result<(), ClassifyError> {
 
     actix_web::HttpServer::new(move || {
         let mut app = App::new()
-            .data(state.clone())
+            .app_data(Data::new(state.clone()))
             .wrap(metrics::ResponseTimer)
             .wrap(logging::RequestLogger)
             // API Endpoints
@@ -80,7 +86,8 @@ fn main() -> Result<(), ClassifyError> {
         app
     })
     .bind(&addr)?
-    .run();
+    .run()
+    .await?;
 
     Ok(())
 }

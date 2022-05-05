@@ -2,7 +2,7 @@ use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     Error, HttpRequest, HttpResponse,
 };
-use futures::{future, task, Future, FutureExt};
+use futures::{future, Future, FutureExt};
 use slog::{self, Drain};
 use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
@@ -62,10 +62,7 @@ impl MozLogFields {
             .get("Accept-Language")
             .and_then(|v| v.to_str().ok())
             .map(|v| v.to_string());
-        self.remote = request
-            .connection_info()
-            .remote_addr()
-            .map(|r| r.to_string());
+        self.remote = request.connection_info().peer_addr().map(|r| r.to_string());
         self
     }
 
@@ -77,13 +74,12 @@ impl MozLogFields {
 
 pub struct RequestLogger;
 
-impl<S, B> Transform<S> for RequestLogger
+impl<S, B> Transform<S, ServiceRequest> for RequestLogger
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
     type InitError = ();
@@ -99,23 +95,20 @@ pub struct RequestLoggerMiddleware<S> {
     service: S,
 }
 
-impl<S, B> Service for RequestLoggerMiddleware<S>
+impl<S, B> Service<ServiceRequest> for RequestLoggerMiddleware<S>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    #[allow(clippy::clippy::type_complexity)]
+    #[allow(clippy::type_complexity)]
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn poll_ready(&mut self, ctx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(ctx)
-    }
+    actix_web::dev::forward_ready!(service);
 
-    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
         let log = match req.app_data::<EndpointState>() {
             Some(state) => state.log.clone(),
             None => return Box::pin(self.service.call(req)),
@@ -139,9 +132,10 @@ mod tests {
     use actix_web::{http, test, HttpResponse};
 
     #[test]
-    fn test_request_fields() {
-        let request =
-            test::TestRequest::with_header("User-Agent", "test-request").to_http_request();
+    async fn test_request_fields() {
+        let request = test::TestRequest::get()
+            .insert_header(("User-Agent", "test-request"))
+            .to_http_request();
         let response = HttpResponse::build(http::StatusCode::CREATED).finish();
         let fields = MozLogFields::default()
             .add_request(&request)

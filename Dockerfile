@@ -1,4 +1,4 @@
-FROM rust:1.52-slim-buster as build
+FROM rust:1.60-slim-bullseye as build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     pkg-config curl libssl-dev
@@ -9,7 +9,7 @@ RUN cargo build --release
 
 # -----
 
-FROM debian:buster-slim as production
+FROM debian:bullseye-slim as production
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

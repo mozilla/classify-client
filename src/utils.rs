@@ -64,7 +64,8 @@ mod tests {
 
     #[test]
     fn trace_ip_works() {
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12")
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12"))
             .to_http_request();
         assert_eq!(
             req.trace_ips(),
@@ -93,7 +94,8 @@ mod tests {
             "Precondition: no trusted proxies by default"
         );
 
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
             .app_data(state)
             .to_http_request();
 
@@ -114,7 +116,8 @@ mod tests {
             ..EndpointState::default()
         };
 
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
             .app_data(state)
             .to_http_request();
 
@@ -135,7 +138,8 @@ mod tests {
             ..EndpointState::default()
         };
 
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
             .app_data(state)
             .to_http_request();
 

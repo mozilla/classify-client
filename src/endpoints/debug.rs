@@ -8,7 +8,7 @@ use actix_web::{HttpRequest, HttpResponse};
 ///  * Calculated client IP for the current request
 ///
 /// This handler should be disabled in production servers.
-pub fn debug_handler(req: HttpRequest) -> HttpResponse {
+pub async fn debug_handler(req: HttpRequest) -> HttpResponse {
     HttpResponse::Ok().body(format!(
         "received headers: {:?}\n\nrequest state: {:?}\n\nclient ip: {:?}",
         req.headers(),

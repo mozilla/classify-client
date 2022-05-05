@@ -82,7 +82,7 @@ mod tests {
     fn test_default_settings() {
         let settings = Settings::default();
 
-        assert_eq!(settings.debug, false);
+        assert!(!settings.debug);
         assert_eq!(
             settings.geoip_db_path.to_str(),
             Some("./GeoLite2-Country.mmdb")
@@ -90,7 +90,7 @@ mod tests {
         assert_eq!(settings.host, "[::]");
         assert_eq!(settings.port, 8000);
         assert_eq!(settings.trusted_proxy_list, Vec::new());
-        assert_eq!(settings.human_logs, false);
+        assert!(!settings.human_logs);
         assert_eq!(settings.version_file.to_str(), Some("./version.json"));
         assert_eq!(settings.sentry_dsn, None);
         assert_eq!(settings.metrics_target, "localhost:8125");
@@ -104,7 +104,7 @@ mod tests {
 
         let settings = Settings::load().unwrap();
 
-        assert_eq!(settings.debug, true);
+        assert!(settings.debug);
         assert_eq!(settings.port, 8888);
         assert_eq!(settings.trusted_proxy_list.len(), 2);
     }

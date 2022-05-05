@@ -1,11 +1,11 @@
 use crate::errors::ClassifyError;
 use cadence::{prelude::*, StatsdClient};
 use maxminddb::{self, geoip2, MaxMindDBError};
-use std::{fmt, net::IpAddr, path::PathBuf};
+use std::{fmt, net::IpAddr, path::PathBuf, sync::Arc};
 
 pub struct GeoIp {
     reader: Option<maxminddb::Reader<Vec<u8>>>,
-    metrics: StatsdClient,
+    metrics: Arc<StatsdClient>,
 }
 
 impl GeoIp {
@@ -26,7 +26,7 @@ impl GeoIp {
                     .and_then(|country| country.iso_code);
                 self.metrics
                     .incr_with_tags("location")
-                    .with_tag("country", &iso_code.unwrap_or("unknown"))
+                    .with_tag("country", iso_code.unwrap_or("unknown"))
                     .send();
                 country_info
             })
@@ -70,7 +70,7 @@ impl fmt::Debug for GeoIp {
 #[derive(Clone, Debug, Default)]
 pub struct GeoIpBuilder {
     path: Option<PathBuf>,
-    metrics: Option<StatsdClient>,
+    metrics: Option<Arc<StatsdClient>>,
 }
 
 impl GeoIpBuilder {
@@ -82,7 +82,7 @@ impl GeoIpBuilder {
         self
     }
 
-    pub fn metrics(mut self, metrics: StatsdClient) -> Self {
+    pub fn metrics(mut self, metrics: Arc<StatsdClient>) -> Self {
         self.metrics = Some(metrics);
         self
     }
@@ -92,9 +92,9 @@ impl GeoIpBuilder {
             Some(path) => Some(maxminddb::Reader::open_readfile(path)?),
             None => None,
         };
-        let metrics = self
-            .metrics
-            .unwrap_or_else(|| StatsdClient::from_sink("default", cadence::NopMetricSink));
+        let metrics = self.metrics.unwrap_or_else(|| {
+            Arc::new(StatsdClient::from_sink("default", cadence::NopMetricSink))
+        });
         Ok(GeoIp { reader, metrics })
     }
 }
@@ -123,7 +123,10 @@ mod tests {
     #[test]
     fn test_geoip_sends_metrics() -> Result<(), Box<dyn std::error::Error>> {
         let log = Arc::new(Mutex::new(Vec::new()));
-        let metrics = StatsdClient::from_sink("test", TestMetricSink { log: log.clone() });
+        let metrics = Arc::new(StatsdClient::from_sink(
+            "test",
+            TestMetricSink { log: log.clone() },
+        ));
         let geoip = super::GeoIp::builder()
             .path("./GeoLite2-Country.mmdb")
             .metrics(metrics)
