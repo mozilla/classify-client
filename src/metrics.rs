@@ -1,6 +1,7 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, APP_NAME};
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    web::Data,
     Error,
 };
 use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
@@ -82,7 +83,7 @@ where
     actix_web::dev::forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let metrics = match req.app_data::<EndpointState>() {
+        let metrics = match req.app_data::<Data<EndpointState>>() {
             Some(state) => state.metrics.clone(),
             None => return Box::pin(self.service.call(req)),
         };
@@ -118,7 +119,8 @@ pub mod tests {
     use crate::endpoints::EndpointState;
     use actix_web::{
         test::{self, TestRequest},
-        web, App, HttpResponse,
+        web::{self, Data},
+        App, HttpResponse,
     };
     use cadence::StatsdClient;
     use regex::Regex;
@@ -153,7 +155,7 @@ pub mod tests {
         };
         let service = test::init_service(
             App::new()
-                .app_data(state)
+                .app_data(Data::new(state))
                 .wrap(ResponseTimer)
                 .route("/", web::get().to(HttpResponse::InternalServerError)),
         )
@@ -192,7 +194,7 @@ pub mod tests {
         };
         let service = test::init_service(
             App::new()
-                .app_data(state)
+                .app_data(Data::new(state))
                 .wrap(ResponseTimer)
                 .route("/", web::get().to(HttpResponse::InternalServerError)),
         )

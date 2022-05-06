@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError};
-use actix_web::HttpRequest;
+use actix_web::{web::Data, HttpRequest};
 use std::net::IpAddr;
 
 pub trait RequestClientIp<S> {
@@ -20,7 +20,7 @@ pub trait RequestTraceIps<'a> {
 impl RequestClientIp<EndpointState> for HttpRequest {
     fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
         let trusted_proxy_list = &self
-            .app_data::<EndpointState>()
+            .app_data::<Data<EndpointState>>()
             .expect("Expected app state")
             .trusted_proxies;
 
@@ -96,7 +96,7 @@ mod tests {
 
         let req = TestRequest::get()
             .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
-            .app_data(state)
+            .app_data(Data::new(state))
             .to_http_request();
 
         assert_eq!(
@@ -118,7 +118,7 @@ mod tests {
 
         let req = TestRequest::get()
             .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
-            .app_data(state)
+            .app_data(Data::new(state))
             .to_http_request();
 
         assert_eq!(
@@ -140,7 +140,7 @@ mod tests {
 
         let req = TestRequest::get()
             .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
-            .app_data(state)
+            .app_data(Data::new(state))
             .to_http_request();
 
         assert!(

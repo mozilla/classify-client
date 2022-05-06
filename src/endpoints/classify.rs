@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
-use actix_web::{http, HttpRequest, HttpResponse};
+use actix_web::{http, web::Data, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 use maxminddb::{self, geoip2};
 use serde::Serializer;
@@ -37,9 +37,11 @@ impl<'a> Default for ClientClassification<'a> {
     }
 }
 
-pub async fn classify_client(req: HttpRequest) -> Result<HttpResponse, ClassifyError> {
-    req.app_data::<EndpointState>()
-        .expect("Could not get app state")
+pub async fn classify_client(
+    req: HttpRequest,
+    state: Data<EndpointState>,
+) -> Result<HttpResponse, ClassifyError> {
+    state
         .geoip
         .locate(req.client_ip()?)
         .map(move |country| {
@@ -62,7 +64,8 @@ mod tests {
     use actix_web::{
         http,
         test::{self, TestRequest},
-        web, App,
+        web::{self, Data},
+        App,
     };
     use chrono::DateTime;
     use maxminddb::geoip2;
@@ -110,7 +113,7 @@ mod tests {
         };
         let service = test::init_service(
             App::new()
-                .app_data(state)
+                .app_data(Data::new(state))
                 .route("/", web::get().to(super::classify_client)),
         )
         .await;
@@ -140,7 +143,7 @@ mod tests {
     async fn test_classify_endpoint_has_correct_cache_headers() {
         let service = test::init_service(
             App::new()
-                .app_data(EndpointState {
+                .app_data(Data::new(EndpointState {
                     geoip: Arc::new(
                         GeoIp::builder()
                             .path("./GeoLite2-Country.mmdb")
@@ -148,7 +151,7 @@ mod tests {
                             .unwrap(),
                     ),
                     ..EndpointState::default()
-                })
+                }))
                 .route("/", web::get().to(super::classify_client)),
         )
         .await;
