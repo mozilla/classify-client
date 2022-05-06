@@ -1,5 +1,6 @@
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    web::Data,
     Error, HttpRequest, HttpResponse,
 };
 use futures::{future, Future, FutureExt};
@@ -109,7 +110,7 @@ where
     actix_web::dev::forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let log = match req.app_data::<EndpointState>() {
+        let log = match req.app_data::<Data<EndpointState>>() {
             Some(state) => state.log.clone(),
             None => return Box::pin(self.service.call(req)),
         };

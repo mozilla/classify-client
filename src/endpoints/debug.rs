@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, utils::RequestClientIp};
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{web::Data, HttpRequest, HttpResponse};
 
 /// Show debugging information about the server comprising:
 ///
@@ -8,11 +8,11 @@ use actix_web::{HttpRequest, HttpResponse};
 ///  * Calculated client IP for the current request
 ///
 /// This handler should be disabled in production servers.
-pub async fn debug_handler(req: HttpRequest) -> HttpResponse {
+pub async fn debug_handler(req: HttpRequest, state: Data<EndpointState>) -> HttpResponse {
     HttpResponse::Ok().body(format!(
         "received headers: {:?}\n\nrequest state: {:?}\n\nclient ip: {:?}",
         req.headers(),
-        &req.app_data::<EndpointState>(),
+        state,
         req.client_ip()
     ))
 }
