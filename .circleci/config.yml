@@ -48,7 +48,7 @@ jobs:
 
   build:
     docker:
-      - image: mozilla/cidockerbases:docker-2022-04-23
+      - image: cimg/base:current
     working_directory: /dockerflow
     steps:
       - checkout
@@ -81,7 +81,7 @@ jobs:
 
   publish:
     docker:
-      - image: mozilla/cidockerbases:docker-2022-04-23
+      - image: cimg/base:current
     steps:
       - setup_remote_docker
       - restore_cache:
