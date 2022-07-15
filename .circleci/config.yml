@@ -11,7 +11,7 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: mozilla/cidockerbases:rust-2022-04-23
+      - image: rust:latest
     steps:
       - checkout
       - download-geolite
@@ -24,9 +24,15 @@ jobs:
 
   lint:
     docker:
-      - image: mozilla/cidockerbases:rust-2022-04-23
+      - image: rust:latest
     steps:
       - checkout
+      - run:
+          name: Setup Rust
+          command: |
+            rustup component add rustfmt
+            rustup component add clippy
+            cargo install cargo-audit
       - run:
           name: Rustfmt
           command: cargo fmt -- --check
