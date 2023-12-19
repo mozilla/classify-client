@@ -60,7 +60,7 @@ impl Default for Settings {
         // then asking envy to deserialize it. Since all settings have a default
         // value specified in the struct, this works and keeps everything in sync.
         let empty_env: Vec<(String, String)> = Vec::new();
-        envy::from_iter(empty_env.into_iter()).unwrap()
+        envy::from_iter(empty_env).unwrap()
     }
 }
 
