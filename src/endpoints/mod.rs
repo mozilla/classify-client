@@ -1,8 +1,8 @@
+pub mod canned;
 pub mod classify;
+pub mod country;
 pub mod debug;
 pub mod dockerflow;
-pub mod canned;
-pub mod country;
 use crate::{geoip::GeoIp, APP_NAME};
 use std::{default::Default, path::PathBuf, sync::Arc};
 

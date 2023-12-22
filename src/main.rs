@@ -11,14 +11,14 @@ pub mod settings;
 pub mod utils;
 
 use crate::{
-    endpoints::{classify, debug, dockerflow, EndpointState, canned, country},
+    endpoints::{canned, classify, country, debug, dockerflow, EndpointState},
     errors::ClassifyError,
     geoip::GeoIp,
     settings::Settings,
 };
 use actix_web::{
     web::{self, Data},
-    App
+    App,
 };
 use std::sync::Arc;
 
@@ -72,10 +72,7 @@ async fn main() -> Result<(), ClassifyError> {
                 web::resource("/api/v1/classify_client/")
                     .route(web::get().to(classify::classify_client)),
             )
-            .service(
-                web::resource("/api/v1/country")
-                    .route(web::get().to(country::get_country)),
-            )
+            .service(web::resource("/api/v1/country").route(web::get().to(country::get_country)))
             // Dockerflow Endpoints
             .service(
                 web::resource("/__lbheartbeat__").route(web::get().to(dockerflow::lbheartbeat)),
@@ -87,7 +84,7 @@ async fn main() -> Result<(), ClassifyError> {
             .service(web::resource("/api/v1/geosubmit").route(web::to(canned::forbidden)))
             .service(web::resource("/api/v1/submit").route(web::to(canned::forbidden)))
             .service(web::resource("/api/v2/geosubmit").route(web::to(canned::forbidden)));
-            
+
         if debug {
             app = app.service(web::resource("/debug").route(web::get().to(debug::debug_handler)));
         }
