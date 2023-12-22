@@ -28,6 +28,8 @@ jobs:
             # Show complete version.json for debugging
             cat ./version.json
       - name: Download GeoDB
+        env:
+          GEOLITE_API_KEY: ${{ secrets.GEOLITE_API_KEY }}
         run: |
           echo "::add-mask::${GEOLITE_API_KEY}"
           if [ "${GEOLITE_API_KEY}" == "" ]; then
