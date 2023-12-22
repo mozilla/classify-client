@@ -1,4 +1,4 @@
-name: Run tests and lint
+name: Run CI checks
 
 on: pull_request
 
@@ -9,8 +9,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install tooling
         run: |
-          rustup component add rustfmt
-          rustup component add clippy
           cargo install cargo-audit
       - name: Rustfmt
         run: cargo fmt -- --check
