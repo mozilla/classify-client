@@ -1,0 +1,60 @@
+name: Build and Publish Docker Container
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+
+jobs:
+  server_container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set tag version
+        run: echo "LATEST_TAG=$(git describe --tags --abbrev=4)" >> $GITHUB_ENV
+      - name: Create version.json
+        run: |
+            # create a version.json per https://github.com/mozilla-services/Dockerflow/blob/main/docs/version_object.md
+            printf '{\n    "commit": "%s",\n    "version": "%s",\n    "source": "%s",\n    "build": "%s"\n}\n' \
+            "$GITHUB_SHA" \
+            "$LATEST_TAG" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > ./version.json
+            # Show complete version.json for debugging
+            cat ./version.json
+      - name: Download GeoDB
+        run: |
+          echo "::add-mask::${GEOLITE_API_KEY}"
+          if [ "${GEOLITE_API_KEY}" == "" ]; then
+            echo "GEOLITE_API_KEY env var required"
+            exit 1
+          fi
+          URL="https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${GEOLITE_API_KEY}&suffix=tar.gz"
+          curl "$URL" --output geolite.tar.gz
+          tar --strip-components=1 --wildcards -zxvf geolite.tar.gz -- '*/GeoLite2-Country.mmdb'
+      - name: Docker metadata
+        id: docker-metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: mozilla/classify-client
+          tags: |
+            type=raw,value=${{ env.LATEST_TAG }}
+            type=raw,value=latest
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.docker-metadata.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
