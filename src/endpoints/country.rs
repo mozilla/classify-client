@@ -52,12 +52,12 @@ pub async fn get_country(
             ));
 
             let country = location.unwrap().country.unwrap();
-            return response.json(CountryResponse {
+            response.json(CountryResponse {
                 country_code: country.iso_code.unwrap(),
                 country_name: country.names.unwrap()["en"],
-            });
+            })
         })
-        .map_err(|err| return ClassifyError::from_source("Future failure", err));
+        .map_err(|err| ClassifyError::from_source("Future failure", err));
 }
 
 #[cfg(test)]
