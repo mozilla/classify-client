@@ -22,6 +22,14 @@ fn default_metrics_target() -> String {
     "localhost:8125".to_owned()
 }
 
+fn default_sentry_env() -> String {
+    "production".to_owned()
+}
+
+fn default_sentry_sample_rate() -> f32 {
+    1.0
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Settings {
     #[serde(default)]
@@ -46,6 +54,10 @@ pub struct Settings {
     pub version_file: PathBuf,
 
     pub sentry_dsn: Option<String>,
+    #[serde(default = "default_sentry_env")]
+    pub sentry_env: String,
+    #[serde(default = "default_sentry_sample_rate")]
+    pub sentry_sample_rate: f32,
 
     /// The host and port to send statsd metrics to. May be a hostname like
     /// "metrics.example.com:8125" or an ip like "127.0.0.1:8125". Port is

@@ -32,6 +32,8 @@ Via environment variables:
     `"127.0.0.1:8125"`. Port is required. (default: `"localhost:8125"`)
 - `PORT`: port number to bind to (default: `"8000"`)
 - `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
+- `SENTRY_ENV`: Sentry environment (default: `"production"`)
+- `SENTRY_SAMPLE_RATE`: Sentry sampling rate (default: `1.0`)
 - `TRUSTED_PROXY_LIST`: A comma-separated list of CIDR ranges that trusted
     proxies will be in. Supports both IPv4 and IPv6.
 - `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)

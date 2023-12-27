@@ -33,6 +33,9 @@ async fn main() -> Result<(), ClassifyError> {
         human_logs,
         metrics_target,
         port,
+        sentry_dsn,
+        sentry_env,
+        sentry_sample_rate,
         trusted_proxy_list,
         version_file,
         ..
@@ -44,6 +47,16 @@ async fn main() -> Result<(), ClassifyError> {
         metrics::get_client(metrics_target, app_log.clone())
             .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err)),
     );
+
+    let _guard = sentry::init((
+        sentry_dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: Some(sentry_env.into()),
+            sample_rate: sentry_sample_rate,
+            ..Default::default()
+        },
+    ));
 
     let state = EndpointState {
         geoip: Arc::new(
@@ -66,6 +79,7 @@ async fn main() -> Result<(), ClassifyError> {
             .app_data(Data::new(state.clone()))
             .wrap(metrics::ResponseTimer)
             .wrap(logging::RequestLogger)
+            .wrap(sentry_actix::Sentry::new())
             // API Endpoints
             .service(web::resource("/").route(web::get().to(classify::classify_client)))
             .service(
