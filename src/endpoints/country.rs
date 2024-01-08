@@ -40,7 +40,12 @@ pub async fn get_country(
         .geoip
         .locate(req.client_ip()?)
         .map(move |location| {
-            if location.is_none() {
+            let country_opt = match location {
+                Some(x) => x.country,
+                None => None
+            };
+
+            if country_opt.is_none() {
                 let mut response = HttpResponse::NotFound();
                 return response.json(&COUNTRY_NOT_FOUND_RESPONSE);
             }
@@ -51,10 +56,16 @@ pub async fn get_country(
                 "max-age=0, no-cache, no-store, must-revalidate",
             ));
 
-            let country = location.unwrap().country.unwrap();
+            let country = country_opt.unwrap();
             response.json(CountryResponse {
-                country_code: country.iso_code.unwrap(),
-                country_name: country.names.unwrap()["en"],
+                country_code: match country.iso_code {
+                    Some(x) => x,
+                    None => ""
+                },
+                country_name: match country.names {
+                    Some(x) => x["en"],
+                    None => ""
+                },
             })
         })
         .map_err(|err| ClassifyError::from_source("Future failure", err));
