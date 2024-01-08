@@ -42,7 +42,7 @@ pub async fn get_country(
         .map(move |location| {
             let country_opt = match location {
                 Some(x) => x.country,
-                None => None
+                None => None,
             };
 
             if country_opt.is_none() {
@@ -60,11 +60,11 @@ pub async fn get_country(
             response.json(CountryResponse {
                 country_code: match country.iso_code {
                     Some(x) => x,
-                    None => ""
+                    None => "",
                 },
                 country_name: match country.names {
                     Some(x) => x["en"],
-                    None => ""
+                    None => "",
                 },
             })
         })
