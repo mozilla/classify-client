@@ -1,6 +1,10 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
-use actix_web::{http, web::Data, HttpRequest, HttpResponse};
-use serde_derive::Serialize;
+use actix_web::{http, web::Data, web::Query, HttpRequest, HttpResponse};
+use once_cell::sync::Lazy;
+use serde_derive::{Deserialize, Serialize};
+use serde_json::{from_str, Value};
+use std::collections::HashSet;
+use std::{fs::read_to_string, sync::Mutex};
 
 #[derive(Serialize)]
 struct CountryResponse<'a> {
@@ -32,10 +36,50 @@ static COUNTRY_NOT_FOUND_RESPONSE: CountryNotFoundResponse = CountryNotFoundResp
     }],
 };
 
+static KEYS_HASHSET: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| {
+    let mut keys: HashSet<String> = HashSet::new();
+
+    if let Ok(contents) = read_to_string("./apiKeys.json") {
+        if let Ok(json_value) = from_str::<Value>(&contents) {
+            if let Some(array) = json_value.as_array() {
+                for item in array {
+                    if let Value::String(string) = &item {
+                        keys.insert(string.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    Mutex::new(keys)
+});
+
+#[derive(Deserialize, Debug)]
+pub struct Params {
+    key: String,
+}
+
 pub async fn get_country(
     req: HttpRequest,
     state: Data<EndpointState>,
 ) -> Result<HttpResponse, ClassifyError> {
+    match Query::<Params>::from_query(req.query_string()) {
+        Ok(req_query) => match KEYS_HASHSET.lock() {
+            Ok(keys) => {
+                if !keys.contains(&req_query.key) {
+                    return Ok(HttpResponse::Unauthorized().body(""));
+                }
+            }
+            _ => {
+                return Ok(HttpResponse::Unauthorized().body(""));
+            }
+        },
+        _ => {
+            return Ok(HttpResponse::Unauthorized().body(""));
+        }
+    }
+
+    // return country if we can identify it based on IP address
     return state
         .geoip
         .locate(req.client_ip()?)
@@ -101,9 +145,22 @@ mod tests {
         )
         .await;
 
-        let miss_request = TestRequest::get()
+        let missing_key_request = TestRequest::get()
+            .param("key", "testkey")
             .insert_header(("x-forwarded-for", "127.0.0.2"))
             .to_request();
+        let missing_key_response = test::call_service(&service, missing_key_request).await;
+        assert_eq!(
+            missing_key_response.status(),
+            401,
+            "Geoip should return 401 http status for an API key miss"
+        );
+
+        let miss_request = TestRequest::get()
+            .uri("/?key=testkey")
+            .insert_header(("x-forwarded-for", "127.0.0.2"))
+            .to_request();
+        println!("Request: {:?}", miss_request);
         let miss_response = test::call_service(&service, miss_request).await;
         assert_eq!(
             miss_response.status(),
@@ -123,6 +180,7 @@ mod tests {
         );
 
         let hit_request = TestRequest::get()
+            .uri("/?key=testkey")
             .insert_header(("x-forwarded-for", "7.7.7.7"))
             .to_request();
         let hit_value: serde_json::Value =
