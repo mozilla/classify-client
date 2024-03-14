@@ -67,15 +67,15 @@ pub async fn get_country(
         Ok(req_query) => match KEYS_HASHSET.lock() {
             Ok(keys) => {
                 if !keys.contains(&req_query.key) {
-                    return Ok(HttpResponse::Unauthorized().body(""));
+                    return Ok(HttpResponse::Unauthorized().body("Wrong key"));
                 }
             }
             _ => {
-                return Ok(HttpResponse::Unauthorized().body(""));
+                return Ok(HttpResponse::Unauthorized().body("Wrong key"));
             }
         },
         _ => {
-            return Ok(HttpResponse::Unauthorized().body(""));
+            return Ok(HttpResponse::Unauthorized().body("Wrong key"));
         }
     }
 
@@ -160,7 +160,6 @@ mod tests {
             .uri("/?key=testkey")
             .insert_header(("x-forwarded-for", "127.0.0.2"))
             .to_request();
-        println!("Request: {:?}", miss_request);
         let miss_response = test::call_service(&service, miss_request).await;
         assert_eq!(
             miss_response.status(),
