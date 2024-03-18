@@ -86,7 +86,7 @@ async fn main() -> Result<(), ClassifyError> {
                 web::resource("/api/v1/classify_client/")
                     .route(web::get().to(classify::classify_client)),
             )
-            .service(web::resource("/api/v1/country").route(web::get().to(country::get_country)))
+            .service(web::resource("/v1/country").route(web::get().to(country::get_country)))
             // Dockerflow Endpoints
             .service(
                 web::resource("/__lbheartbeat__").route(web::get().to(dockerflow::lbheartbeat)),
@@ -94,10 +94,10 @@ async fn main() -> Result<(), ClassifyError> {
             .service(web::resource("/__heartbeat__").route(web::get().to(dockerflow::heartbeat)))
             .service(web::resource("/__version__").route(web::get().to(dockerflow::version)))
             // Static responses
-            .service(web::resource("/api/v1/geolocate").route(web::to(canned::unauthorized)))
-            .service(web::resource("/api/v1/geosubmit").route(web::to(canned::forbidden)))
-            .service(web::resource("/api/v1/submit").route(web::to(canned::forbidden)))
-            .service(web::resource("/api/v2/geosubmit").route(web::to(canned::forbidden)));
+            .service(web::resource("/v1/geolocate").route(web::to(canned::unauthorized)))
+            .service(web::resource("/v1/geosubmit").route(web::to(canned::forbidden)))
+            .service(web::resource("/v1/submit").route(web::to(canned::forbidden)))
+            .service(web::resource("/v2/geosubmit").route(web::to(canned::forbidden)));
 
         if debug {
             app = app.service(web::resource("/debug").route(web::get().to(debug::debug_handler)));
