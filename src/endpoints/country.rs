@@ -1,6 +1,7 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
 use actix_web::{http, web::Data, web::Query, HttpRequest, HttpResponse};
 use once_cell::sync::Lazy;
+use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{from_str, Value};
 use std::collections::HashSet;
@@ -54,6 +55,9 @@ static KEYS_HASHSET: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| {
     Mutex::new(keys)
 });
 
+static DOWNSTREAM_KEY: Lazy<regex::Regex> =
+    Lazy::new(|| Regex::new(r"^firefox-downstream-\w{1,40}$").unwrap());
+
 #[derive(Deserialize, Debug)]
 pub struct Params {
     key: String,
@@ -63,17 +67,24 @@ pub async fn get_country(
     req: HttpRequest,
     state: Data<EndpointState>,
 ) -> Result<HttpResponse, ClassifyError> {
+    // check provided API Key
     match Query::<Params>::from_query(req.query_string()) {
-        Ok(req_query) => match KEYS_HASHSET.lock() {
-            Ok(keys) => {
-                if !keys.contains(&req_query.key) {
-                    return Ok(HttpResponse::Unauthorized().body("Wrong key"));
+        Ok(req_query) => {
+            // check for downstream firefox regex pattern
+            if !DOWNSTREAM_KEY.is_match(&req_query.key) {
+                // if that misses, check list of known API keys
+                match KEYS_HASHSET.lock() {
+                    Ok(keys) => {
+                        if !keys.contains(&req_query.key) {
+                            return Ok(HttpResponse::Unauthorized().body("Wrong key"));
+                        }
+                    }
+                    _ => {
+                        return Ok(HttpResponse::Unauthorized().body("Wrong key"));
+                    }
                 }
             }
-            _ => {
-                return Ok(HttpResponse::Unauthorized().body("Wrong key"));
-            }
-        },
+        }
         _ => {
             return Ok(HttpResponse::Unauthorized().body("Wrong key"));
         }
@@ -193,6 +204,35 @@ mod tests {
             *hit_value.get("country_name").unwrap(),
             json!("United States"),
             "Geoip should resolve a country name for known IP"
+        );
+
+        let downstream_key_request = TestRequest::get()
+            .uri("/?key=firefox-downstream-foo_bar")
+            .insert_header(("x-forwarded-for", "7.7.7.7"))
+            .to_request();
+        let downstream_key_value: serde_json::Value =
+            test::call_and_read_body_json(&service, downstream_key_request).await;
+        assert_eq!(
+            *downstream_key_value.get("country_code").unwrap(),
+            json!("US"),
+            "Geoip should resolve a country code for known IP"
+        );
+        assert_eq!(
+            *downstream_key_value.get("country_name").unwrap(),
+            json!("United States"),
+            "Geoip should resolve a country name for known IP"
+        );
+
+        let downstream_key_invalid = TestRequest::get()
+            .uri("/?key=firefox-downstream-foo-bar")
+            .insert_header(("x-forwarded-for", "7.7.7.7"))
+            .to_request();
+        let downstream_key_invalid_response =
+            test::call_service(&service, downstream_key_invalid).await;
+        assert_eq!(
+            downstream_key_invalid_response.status(),
+            401,
+            "Geoip should return 401 http status for an API key miss"
         );
 
         Ok(())
