@@ -41,7 +41,9 @@ static COUNTRY_NOT_FOUND_RESPONSE: CountryNotFoundResponse = CountryNotFoundResp
 static KEYS_HASHSET: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| {
     let mut keys: HashSet<String> = HashSet::new();
 
-    if let Ok(contents) = read_to_string("./apiKeys.json") {
+    let file_path = std::env::var("API_KEYS_PATH").unwrap_or("./apiKeys.json".into());
+
+    if let Ok(contents) = read_to_string(file_path) {
         if let Ok(json_value) = from_str::<Value>(&contents) {
             if let Some(array) = json_value.as_array() {
                 for item in array {

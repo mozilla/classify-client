@@ -37,6 +37,7 @@ Via environment variables:
 - `TRUSTED_PROXY_LIST`: A comma-separated list of CIDR ranges that trusted
     proxies will be in. Supports both IPv4 and IPv6.
 - `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
+- `API_KEYS_FILE`: path to `apiKeys.json` file for `/v1/country` endpoint (default: `"./apiKeys.json"`)
 
 ## Tests
 
