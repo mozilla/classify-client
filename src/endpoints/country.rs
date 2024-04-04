@@ -1,5 +1,6 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
 use actix_web::{http, web::Data, web::Query, HttpRequest, HttpResponse};
+use cadence::prelude::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
@@ -70,6 +71,12 @@ pub async fn get_country(
     // check provided API Key
     match Query::<Params>::from_query(req.query_string()) {
         Ok(req_query) => {
+            state
+                .metrics
+                .incr_with_tags("country")
+                .with_tag("api_key", &req_query.key)
+                .send();
+
             // check for downstream firefox regex pattern
             if !DOWNSTREAM_KEY.is_match(&req_query.key) {
                 // if that misses, check list of known API keys
@@ -128,17 +135,26 @@ pub async fn get_country(
 
 #[cfg(test)]
 mod tests {
-    use crate::{endpoints::EndpointState, geoip::GeoIp};
+    use crate::{endpoints::EndpointState, geoip::GeoIp, metrics::tests::TestMetricSink};
     use actix_web::{
         test::{self, TestRequest},
         web::{self, Data},
         App,
     };
+    use cadence::StatsdClient;
     use serde_json::{self, json};
-    use std::sync::Arc;
+    use std::{
+        ops::Deref,
+        sync::{Arc, Mutex},
+    };
 
     #[actix_rt::test]
     async fn test_country_endpoint() -> Result<(), Box<dyn std::error::Error>> {
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let metrics = Arc::new(StatsdClient::from_sink(
+            "test",
+            TestMetricSink { log: log.clone() },
+        ));
         let state = EndpointState {
             geoip: Arc::new(
                 GeoIp::builder()
@@ -147,6 +163,7 @@ mod tests {
                     .unwrap(),
             ),
             trusted_proxies: vec!["127.0.0.1/32".parse().unwrap()],
+            metrics: metrics,
             ..EndpointState::default()
         };
         let service = test::init_service(
@@ -233,6 +250,17 @@ mod tests {
             downstream_key_invalid_response.status(),
             401,
             "Geoip should return 401 http status for an API key miss"
+        );
+
+        // check that we have api key metrics
+        assert_eq!(
+            *log.lock().unwrap().deref(),
+            vec![
+                "test.country:1|c|#api_key:testkey",
+                "test.country:1|c|#api_key:testkey",
+                "test.country:1|c|#api_key:firefox-downstream-foo_bar",
+                "test.country:1|c|#api_key:firefox-downstream-foo-bar",
+            ]
         );
 
         Ok(())
