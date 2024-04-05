@@ -166,7 +166,7 @@ mod tests {
                     .unwrap(),
             ),
             trusted_proxies: vec!["127.0.0.1/32".parse().unwrap()],
-            metrics: metrics,
+            metrics,
             ..EndpointState::default()
         };
         let service = test::init_service(
