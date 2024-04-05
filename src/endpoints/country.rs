@@ -1,3 +1,4 @@
+use crate::settings::Settings;
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
 use actix_web::{http, web::Data, web::Query, HttpRequest, HttpResponse};
 use cadence::prelude::*;
@@ -41,14 +42,14 @@ static COUNTRY_NOT_FOUND_RESPONSE: CountryNotFoundResponse = CountryNotFoundResp
 static KEYS_HASHSET: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| {
     let mut keys: HashSet<String> = HashSet::new();
 
-    let file_path = std::env::var("API_KEYS_PATH").unwrap_or("./apiKeys.json".into());
-
-    if let Ok(contents) = read_to_string(file_path) {
-        if let Ok(json_value) = from_str::<Value>(&contents) {
-            if let Some(array) = json_value.as_array() {
-                for item in array {
-                    if let Value::String(string) = &item {
-                        keys.insert(string.to_string());
+    if let Ok(settings) = Settings::load() {
+        if let Ok(contents) = read_to_string(settings.api_keys_file) {
+            if let Ok(json_value) = from_str::<Value>(&contents) {
+                if let Some(array) = json_value.as_array() {
+                    for item in array {
+                        if let Value::String(string) = &item {
+                            keys.insert(string.to_string());
+                        }
                     }
                 }
             }
