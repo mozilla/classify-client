@@ -60,3 +60,11 @@ The checks Therapist runs are:
 
 * Rustfmt
 * Clippy, using the `clippy::all` preset
+
+## Former endpoints from Mozilla Location Services
+Endpoints from the Mozilla Location Services project has been migrated to classify-client for continuity.
+ - `/v1/country` - Requires an api key. Downstream firefox builds can self select a key that matches this expression: `^firefox-downstream-\w{1,40}$`
+ - `/v1/geolocate` - Intentionally not routed to return a 404
+ - `/v1/geosubmit` - Static 403 response
+ - `/v1/submit` - Static 403 response
+ - `/v2/geosubmit` - Static 403 response
