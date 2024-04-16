@@ -63,7 +63,9 @@ The checks Therapist runs are:
 
 ## Former endpoints from Mozilla Location Services
 Endpoints from the Mozilla Location Services project has been migrated to classify-client for continuity.
- - `/v1/country` - Requires an api key. Downstream firefox builds can self select a key that matches this expression: `^firefox-downstream-\w{1,40}$`
+ - `/v1/country` - Requires an api key. 
+    - Downstream firefox builds can self select a key that matches this expression: `^firefox-downstream-\w{1,40}$`
+    - The API key is required here just to have rough usage metrics and allow us to reach out to project maintainers if needed in the future. 
  - `/v1/geolocate` - Intentionally not routed to return a 404
  - `/v1/geosubmit` - Static 403 response
  - `/v1/submit` - Static 403 response

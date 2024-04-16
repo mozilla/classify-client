@@ -80,7 +80,7 @@ pub async fn get_country(
                 .with_tag("api_key", &req_query.key)
                 .send();
 
-            // check for downstream firefox regex pattern
+            // check for downstream firefox regex pattern, see readme for details
             if !DOWNSTREAM_KEY.is_match(&req_query.key) {
                 // if that misses, check list of known API keys
                 match KEYS_HASHSET.lock() {
@@ -226,6 +226,7 @@ mod tests {
             "Geoip should resolve a country name for known IP"
         );
 
+        // check a valid downstream API key using the \w{1-40} pattern
         let downstream_key_request = TestRequest::get()
             .uri("/?key=firefox-downstream-foo_bar")
             .insert_header(("x-forwarded-for", "7.7.7.7"))
@@ -243,8 +244,9 @@ mod tests {
             "Geoip should resolve a country name for known IP"
         );
 
+        // check an imvalid downstream API key using the \w{1-40} pattern
         let downstream_key_invalid = TestRequest::get()
-            .uri("/?key=firefox-downstream-foo-bar")
+            .uri("/?key=firefox-downstream-foo-bar") // dashes won't match \w
             .insert_header(("x-forwarded-for", "7.7.7.7"))
             .to_request();
         let downstream_key_invalid_response =
