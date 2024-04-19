@@ -5,6 +5,7 @@
 pub mod endpoints;
 pub mod errors;
 pub mod geoip;
+pub mod keys;
 pub mod logging;
 pub mod metrics;
 pub mod settings;
@@ -27,6 +28,7 @@ const APP_NAME: &str = "classify-client";
 #[actix_web::main]
 async fn main() -> Result<(), ClassifyError> {
     let Settings {
+        api_keys_file,
         debug,
         geoip_db_path,
         host,
@@ -59,6 +61,7 @@ async fn main() -> Result<(), ClassifyError> {
     ));
 
     let state = EndpointState {
+        api_keys_hashset: keys::load(api_keys_file, app_log.clone()),
         geoip: Arc::new(
             GeoIp::builder()
                 .path(geoip_db_path)
