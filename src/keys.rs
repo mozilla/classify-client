@@ -27,7 +27,7 @@ pub fn load(file_path: PathBuf, app_log: Logger) -> HashSet<String> {
         }
     }
 
-    return keys;
+    keys
 }
 
 #[cfg(test)]
@@ -74,7 +74,7 @@ mod tests {
 
         // tests
         let missing_set = load(missing_file.clone(), logger.clone());
-        assert!(missing_set.len() == 0);
+        assert!(missing_set.is_empty());
         assert!(logs
             .lock()
             .unwrap()
@@ -83,7 +83,7 @@ mod tests {
             .starts_with("ERRO / Error reading api keys file"));
 
         let corrupt_set = load(corrupt_file.clone(), logger.clone());
-        assert!(corrupt_set.len() == 0);
+        assert!(corrupt_set.is_empty());
         assert!(logs
             .lock()
             .unwrap()
@@ -93,7 +93,7 @@ mod tests {
 
         let good_set = load(good_file.clone(), logger.clone());
         assert!(good_set.len() == 1);
-        assert!(logs.lock().unwrap().pop() == None);
+        assert!(logs.lock().unwrap().pop().is_none());
 
         // cleanup
         let _ = fs::remove_file(corrupt_file);
