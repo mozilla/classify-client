@@ -31,7 +31,7 @@ impl RequestClientIp<EndpointState> for HttpRequest {
             .iter()
             .find(|ip| !is_trusted_ip(ip))
             .ok_or_else(|| ClassifyError::new("Could not determine IP"))
-            .map(|ip| *ip)
+            .copied()
     }
 }
 

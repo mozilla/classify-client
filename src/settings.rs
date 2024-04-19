@@ -6,6 +6,10 @@ fn default_geoip_db_path() -> PathBuf {
     "./GeoLite2-Country.mmdb".into()
 }
 
+fn default_api_keys_file() -> PathBuf {
+    "./apiKeys.json".into()
+}
+
 fn default_host() -> String {
     "[::]".to_owned()
 }
@@ -37,6 +41,9 @@ pub struct Settings {
 
     #[serde(default = "default_geoip_db_path")]
     pub geoip_db_path: PathBuf,
+
+    #[serde(default = "default_api_keys_file")]
+    pub api_keys_file: PathBuf,
 
     #[serde(default = "default_host")]
     pub host: String,

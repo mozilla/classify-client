@@ -37,6 +37,7 @@ Via environment variables:
 - `TRUSTED_PROXY_LIST`: A comma-separated list of CIDR ranges that trusted
     proxies will be in. Supports both IPv4 and IPv6.
 - `VERSION_FILE`: path to `version.json` file (default: `"./version.json"`)
+- `API_KEYS_FILE`: path to `apiKeys.json` file for `/v1/country` endpoint (default: `"./apiKeys.json"`)
 
 ## Tests
 
@@ -59,3 +60,13 @@ The checks Therapist runs are:
 
 * Rustfmt
 * Clippy, using the `clippy::all` preset
+
+## Former endpoints from Mozilla Location Services
+Endpoints from the Mozilla Location Services project has been migrated to classify-client for continuity.
+ - `/v1/country` - Requires an api key. 
+    - Downstream firefox builds can self select a key that matches this expression: `^firefox-downstream-\w{1,40}$`
+    - The API key is required here just to have rough usage metrics and allow us to reach out to project maintainers if needed in the future. 
+ - `/v1/geolocate` - Intentionally not routed to return a 404
+ - `/v1/geosubmit` - Static 403 response
+ - `/v1/submit` - Static 403 response
+ - `/v2/geosubmit` - Static 403 response

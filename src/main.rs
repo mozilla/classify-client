@@ -94,7 +94,7 @@ async fn main() -> Result<(), ClassifyError> {
             .service(web::resource("/__heartbeat__").route(web::get().to(dockerflow::heartbeat)))
             .service(web::resource("/__version__").route(web::get().to(dockerflow::version)))
             // Static responses
-            .service(web::resource("/v1/geolocate").route(web::to(canned::unauthorized)))
+            // no /v1/geolocate, intentionally returning 404
             .service(web::resource("/v1/geosubmit").route(web::to(canned::forbidden)))
             .service(web::resource("/v1/submit").route(web::to(canned::forbidden)))
             .service(web::resource("/v2/geosubmit").route(web::to(canned::forbidden)));
