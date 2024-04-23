@@ -1,13 +1,9 @@
-use crate::settings::Settings;
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
 use actix_web::{http, web::Data, web::Query, HttpRequest, HttpResponse};
 use cadence::prelude::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
-use serde_json::{from_str, Value};
-use std::collections::HashSet;
-use std::{fs::read_to_string, sync::Mutex};
 
 #[derive(Serialize)]
 struct CountryResponse<'a> {
@@ -39,26 +35,6 @@ static COUNTRY_NOT_FOUND_RESPONSE: CountryNotFoundResponse = CountryNotFoundResp
     }],
 };
 
-static KEYS_HASHSET: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| {
-    let mut keys: HashSet<String> = HashSet::new();
-
-    if let Ok(settings) = Settings::load() {
-        if let Ok(contents) = read_to_string(settings.api_keys_file) {
-            if let Ok(json_value) = from_str::<Value>(&contents) {
-                if let Some(array) = json_value.as_array() {
-                    for item in array {
-                        if let Value::String(string) = &item {
-                            keys.insert(string.to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Mutex::new(keys)
-});
-
 static DOWNSTREAM_KEY: Lazy<regex::Regex> =
     Lazy::new(|| Regex::new(r"^firefox-downstream-\w{1,40}$").unwrap());
 
@@ -83,15 +59,8 @@ pub async fn get_country(
             // check for downstream firefox regex pattern, see readme for details
             if !DOWNSTREAM_KEY.is_match(&req_query.key) {
                 // if that misses, check list of known API keys
-                match KEYS_HASHSET.lock() {
-                    Ok(keys) => {
-                        if !keys.contains(&req_query.key) {
-                            return Ok(HttpResponse::Unauthorized().body("Wrong key"));
-                        }
-                    }
-                    _ => {
-                        return Ok(HttpResponse::Unauthorized().body("Wrong key"));
-                    }
+                if !state.api_keys_hashset.contains(&req_query.key) {
+                    return Ok(HttpResponse::Unauthorized().body("Wrong key"));
                 }
             }
         }
@@ -147,6 +116,7 @@ mod tests {
     use cadence::StatsdClient;
     use serde_json::{self, json};
     use std::{
+        collections::HashSet,
         ops::Deref,
         sync::{Arc, Mutex},
     };
@@ -158,7 +128,11 @@ mod tests {
             "test",
             TestMetricSink { log: log.clone() },
         ));
+        let mut api_keys_hashset = HashSet::new();
+        api_keys_hashset.insert("testkey".to_string());
+
         let state = EndpointState {
+            api_keys_hashset,
             geoip: Arc::new(
                 GeoIp::builder()
                     .path("./GeoLite2-Country.mmdb")
