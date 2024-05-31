@@ -21,8 +21,7 @@ RUN groupadd --gid 10001 app && \
 WORKDIR /app
 
 COPY --from=build /app/target/release/classify-client .
-COPY --from=build /app/GeoLite2-Country.mmdb ./
-COPY --from=build /app/version.json ./
+COPY --from=build /app/version.json /app/GeoLite2-Country.mmdb* ./
 
 USER app
 ENV PORT=8000
