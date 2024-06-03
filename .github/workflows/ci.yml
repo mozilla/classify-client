@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
           URL="https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${GEOLITE_API_KEY}&suffix=tar.gz"
-          curl "$URL" --output geolite.tar.gz
+          curl -L "$URL" --output geolite.tar.gz
           tar --strip-components=1 --wildcards -zxvf geolite.tar.gz -- '*/GeoLite2-Country.mmdb'
       - name: Build
         run: cargo build --release
