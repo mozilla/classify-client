@@ -47,11 +47,12 @@ pub async fn get_country(
     req: HttpRequest,
     state: Data<EndpointState>,
 ) -> Result<HttpResponse, ClassifyError> {
+    let metrics = &state.metrics;
+
     // check provided API Key
     match Query::<Params>::from_query(req.query_string()) {
         Ok(req_query) => {
-            state
-                .metrics
+            metrics
                 .incr_with_tags("country")
                 .with_tag("api_key", &req_query.key)
                 .send();
@@ -81,6 +82,7 @@ pub async fn get_country(
 
             if country_opt.is_none() {
                 let mut response = HttpResponse::NotFound();
+                metrics.incr_with_tags("country_miss").send();
                 return response.json(&COUNTRY_NOT_FOUND_RESPONSE);
             }
 
@@ -89,6 +91,8 @@ pub async fn get_country(
                 http::header::CACHE_CONTROL,
                 "max-age=0, no-cache, no-store, must-revalidate",
             ));
+
+            metrics.incr_with_tags("country_hit").send();
 
             let country = country_opt.unwrap();
             response.json(CountryResponse {
@@ -236,8 +240,11 @@ mod tests {
             *log.lock().unwrap().deref(),
             vec![
                 "test.country:1|c|#api_key:testkey",
+                "test.country_miss:1|c",
                 "test.country:1|c|#api_key:testkey",
+                "test.country_hit:1|c",
                 "test.country:1|c|#api_key:firefox-downstream-foo_bar",
+                "test.country_hit:1|c",
                 "test.country:1|c|#api_key:firefox-downstream-foo-bar",
             ]
         );
