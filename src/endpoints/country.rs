@@ -52,18 +52,22 @@ pub async fn get_country(
     // check provided API Key
     match Query::<Params>::from_query(req.query_string()) {
         Ok(req_query) => {
-            metrics
-                .incr_with_tags("country")
-                .with_tag("api_key", &req_query.key)
-                .send();
-
             // check for downstream firefox regex pattern, see readme for details
             if !DOWNSTREAM_KEY.is_match(&req_query.key) {
                 // if that misses, check list of known API keys
                 if !state.api_keys_hashset.contains(&req_query.key) {
+                    metrics
+                        .incr_with_tags("country")
+                        .with_tag("api_key", "invalid-key")
+                        .send();
                     return Ok(HttpResponse::Unauthorized().body("Wrong key"));
                 }
             }
+
+            metrics
+                .incr_with_tags("country")
+                .with_tag("api_key", &req_query.key)
+                .send();
         }
         _ => {
             return Ok(HttpResponse::Unauthorized().body("Wrong key"));
@@ -245,7 +249,7 @@ mod tests {
                 "test.country_hit:1|c",
                 "test.country:1|c|#api_key:firefox-downstream-foo_bar",
                 "test.country_hit:1|c",
-                "test.country:1|c|#api_key:firefox-downstream-foo-bar",
+                "test.country:1|c|#api_key:invalid-key",
             ]
         );
 
