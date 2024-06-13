@@ -90,6 +90,7 @@ async fn main() -> Result<(), ClassifyError> {
                     .route(web::get().to(classify::classify_client)),
             )
             .service(web::resource("/v1/country").route(web::get().to(country::get_country)))
+            .service(web::resource("/v1/country").route(web::post().to(country::get_country)))
             // Dockerflow Endpoints
             .service(
                 web::resource("/__lbheartbeat__").route(web::get().to(dockerflow::lbheartbeat)),
