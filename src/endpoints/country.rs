@@ -100,10 +100,7 @@ pub async fn get_country(
 
             let country = country_opt.unwrap();
             response.json(CountryResponse {
-                country_code: match country.iso_code {
-                    Some(x) => x,
-                    None => "",
-                },
+                country_code: country.iso_code.unwrap_or_default(),
                 country_name: match country.names {
                     Some(x) => x["en"],
                     None => "",
