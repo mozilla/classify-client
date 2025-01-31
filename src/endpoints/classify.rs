@@ -28,7 +28,7 @@ fn country_iso_code<S: Serializer>(
     }
 }
 
-impl<'a> Default for ClientClassification<'a> {
+impl Default for ClientClassification<'_> {
     fn default() -> Self {
         Self {
             request_time: Utc::now(),

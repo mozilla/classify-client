@@ -75,7 +75,7 @@ pub async fn get_country(
     }
 
     // return country if we can identify it based on IP address
-    return state
+    state
         .geoip
         .locate(req.client_ip()?)
         .map(move |location| {
@@ -107,7 +107,7 @@ pub async fn get_country(
                 },
             })
         })
-        .map_err(|err| ClassifyError::from_source("Future failure", err));
+        .map_err(|err| ClassifyError::from_source("Future failure", err))
 }
 
 #[cfg(test)]
