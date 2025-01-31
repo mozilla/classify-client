@@ -11,13 +11,18 @@ use std::{io, pin::Pin};
 
 use crate::endpoints::EndpointState;
 
-pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool) -> slog::Logger {
+pub fn get_logger<S: Into<String>>(
+    prefix: S,
+    human_logs: bool,
+    min_log_level: usize,
+) -> slog::Logger {
     let prefix = prefix.into();
     let drain = if human_logs {
         let decorator = slog_term::TermDecorator::new().build();
         let drain = slog_term::CompactFormat::new(decorator).build().fuse();
         slog_async::Async::new(drain).build().fuse()
     } else {
+        let log_level = slog::Level::from_usize(min_log_level);
         let drain = MozLogJson::new(io::stdout())
             .logger_name(format!(
                 "{}-{}",
@@ -26,6 +31,7 @@ pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool) -> slog::Logger 
             ))
             .msg_type(prefix)
             .build()
+            .filter_level(log_level.unwrap_or(slog::Level::Warning))
             .fuse();
         slog_async::Async::new(drain).build().fuse()
     };

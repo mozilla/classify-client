@@ -22,6 +22,10 @@ fn default_version_file() -> PathBuf {
     "./version.json".into()
 }
 
+fn default_log_level() -> usize {
+    3
+}
+
 fn default_metrics_target() -> String {
     "localhost:8125".to_owned()
 }
@@ -56,6 +60,9 @@ pub struct Settings {
 
     #[serde(default)]
     pub human_logs: bool,
+
+    #[serde(default = "default_log_level")]
+    pub min_log_level: usize,
 
     #[serde(default = "default_version_file")]
     pub version_file: PathBuf,
