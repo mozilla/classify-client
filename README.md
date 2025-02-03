@@ -30,6 +30,7 @@ Via environment variables:
 - `METRICS_TARGET`: The host and port to send statsd metrics to. May be a
     hostname like `"metrics.example.com:8125"` or an IP like
     `"127.0.0.1:8125"`. Port is required. (default: `"localhost:8125"`)
+- `LOG_LEVEL`: minimum log level for slog, higher levels will be filtered out. Defaults to `warning`. Options: `off, critical, error, warning, info, debug, trace`
 - `PORT`: port number to bind to (default: `"8000"`)
 - `SENTRY_DSN`: report errors to a Sentry instance (default: `""`)
 - `SENTRY_ENV`: Sentry environment (default: `"production"`)

@@ -1,12 +1,13 @@
 [package]
 authors = [
+    "Alex Cottner <acottner@mozilla.com>",
     "Michael Cooper <mcooper@mozilla.com>",
     "Mathieu Leplatre <mleplatre@mozilla.com>"
 ]
 edition = "2021"
 rust-version = "1.72"
 name = "classify-client"
-version = "0.2.0"
+version = "0.3.0"
 
 [dependencies]
 actix = "^0.13.5"

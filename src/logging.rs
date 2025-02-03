@@ -7,17 +7,18 @@ use futures::{future, Future, FutureExt};
 use slog::{self, Drain};
 use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
-use std::{io, pin::Pin};
+use std::{io, pin::Pin, str::FromStr};
 
 use crate::endpoints::EndpointState;
 
-pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool) -> slog::Logger {
+pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool, log_level: String) -> slog::Logger {
     let prefix = prefix.into();
     let drain = if human_logs {
         let decorator = slog_term::TermDecorator::new().build();
         let drain = slog_term::CompactFormat::new(decorator).build().fuse();
         slog_async::Async::new(drain).build().fuse()
     } else {
+        let log_level_option = slog::Level::from_str(&log_level);
         let drain = MozLogJson::new(io::stdout())
             .logger_name(format!(
                 "{}-{}",
@@ -26,6 +27,7 @@ pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool) -> slog::Logger 
             ))
             .msg_type(prefix)
             .build()
+            .filter_level(log_level_option.unwrap_or(slog::Level::Warning))
             .fuse();
         slog_async::Async::new(drain).build().fuse()
     };
