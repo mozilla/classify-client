@@ -34,7 +34,7 @@ async fn main() -> Result<(), ClassifyError> {
         host,
         human_logs,
         metrics_target,
-        min_log_level,
+        log_level,
         port,
         sentry_dsn,
         sentry_env,
@@ -44,7 +44,7 @@ async fn main() -> Result<(), ClassifyError> {
         ..
     } = Settings::load()?;
 
-    let app_log = logging::get_logger("app", human_logs, min_log_level);
+    let app_log = logging::get_logger("app", human_logs, log_level);
 
     let metrics = Arc::new(
         metrics::get_client(metrics_target, app_log.clone())

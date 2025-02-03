@@ -22,8 +22,8 @@ fn default_version_file() -> PathBuf {
     "./version.json".into()
 }
 
-fn default_log_level() -> usize {
-    3
+fn default_log_level() -> String {
+    slog::Level::Warning.as_str().to_owned()
 }
 
 fn default_metrics_target() -> String {
@@ -62,7 +62,7 @@ pub struct Settings {
     pub human_logs: bool,
 
     #[serde(default = "default_log_level")]
-    pub min_log_level: usize,
+    pub log_level: String,
 
     #[serde(default = "default_version_file")]
     pub version_file: PathBuf,
