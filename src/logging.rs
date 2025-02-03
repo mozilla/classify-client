@@ -11,11 +11,7 @@ use std::{io, pin::Pin, str::FromStr};
 
 use crate::endpoints::EndpointState;
 
-pub fn get_logger<S: Into<String>>(
-    prefix: S,
-    human_logs: bool,
-    log_level: String,
-) -> slog::Logger {
+pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool, log_level: String) -> slog::Logger {
     let prefix = prefix.into();
     let drain = if human_logs {
         let decorator = slog_term::TermDecorator::new().build();
