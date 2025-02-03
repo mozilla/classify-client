@@ -18,7 +18,7 @@ pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool, log_level: Strin
         let drain = slog_term::CompactFormat::new(decorator).build().fuse();
         slog_async::Async::new(drain).build().fuse()
     } else {
-        let log_level_options = slog::Level::from_str(&log_level);
+        let log_level_option = slog::Level::from_str(&log_level);
         let drain = MozLogJson::new(io::stdout())
             .logger_name(format!(
                 "{}-{}",
@@ -27,7 +27,7 @@ pub fn get_logger<S: Into<String>>(prefix: S, human_logs: bool, log_level: Strin
             ))
             .msg_type(prefix)
             .build()
-            .filter_level(log_level_options.unwrap_or(slog::Level::Warning))
+            .filter_level(log_level_option.unwrap_or(slog::Level::Warning))
             .fuse();
         slog_async::Async::new(drain).build().fuse()
     };
