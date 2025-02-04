@@ -1,4 +1,4 @@
-FROM rust:1.74-slim-bullseye as build
+FROM rust:1.84-slim-bookworm as build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     pkg-config curl libssl-dev
@@ -9,11 +9,11 @@ RUN cargo build --release
 
 # -----
 
-FROM debian:bullseye-slim as production
+FROM debian:bookworm-slim as production
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libssl1.1
+    libssl3
 
 RUN groupadd --gid 10001 app && \
     useradd -g app --uid 10001 --shell /usr/sbin/nologin --no-create-home --home-dir /app app
