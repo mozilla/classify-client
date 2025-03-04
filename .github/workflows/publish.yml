@@ -46,6 +46,7 @@ jobs:
 
       - id: gcp_auth
         uses: google-github-actions/auth@v2
+        if: ${{ github.event_name != 'pull_request' }}
         with:
           token_format: access_token
           service_account: artifact-writer@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
