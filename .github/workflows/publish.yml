@@ -33,7 +33,6 @@ jobs:
 
       - id: build-version-json
         run: |
-          cd src
           printf '{\n    "commit": "%s",\n    "version": "%s",\n    "source": "%s",\n    "build": "%s"\n}\n' \
           "$(git rev-parse --short HEAD)" \
           "$(git describe --tags --abbrev=4)" \
