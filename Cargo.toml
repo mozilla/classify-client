@@ -30,7 +30,7 @@ slog-json = "2.6.1"
 slog-mozlog-json = "0.1.0"
 slog-term = "2.9.1"
 slog_derive = "0.2"
-once_cell = "1.21.0"
+once_cell = "1.21.1"
 url = "2.5.4"
 
 [dependencies.chrono]
