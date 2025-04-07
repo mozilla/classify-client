@@ -1,6 +1,6 @@
 use crate::errors::ClassifyError;
 use cadence::{prelude::*, StatsdClient};
-use maxminddb::{self, geoip2, MaxMindDBError};
+use maxminddb::{self, geoip2, MaxMindDbError};
 use std::{fmt, net::IpAddr, path::PathBuf, sync::Arc};
 
 pub struct GeoIp {
@@ -31,7 +31,7 @@ impl GeoIp {
                 country_info
             })
             .or_else(|err| match err {
-                MaxMindDBError::AddressNotFoundError(_) => {
+                MaxMindDbError::InvalidNetwork(_) => {
                     self.metrics
                         .incr_with_tags("location")
                         .with_tag("country", "unknown")
