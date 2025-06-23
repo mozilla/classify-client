@@ -18,7 +18,7 @@ impl GeoIp {
             .as_ref()
             .ok_or_else(|| ClassifyError::new("No geoip database available"))?
             .lookup(ip)
-            .map(|country_info: Option<geoip2::Country>| {
+            .inspect(|country_info: &Option<geoip2::Country>| {
                 // Send a metrics ping about the geolocation result
                 let iso_code = country_info
                     .clone()
@@ -28,7 +28,6 @@ impl GeoIp {
                     .incr_with_tags("location")
                     .with_tag("country", iso_code.unwrap_or("unknown"))
                     .send();
-                country_info
             })
             .or_else(|err| match err {
                 MaxMindDbError::InvalidNetwork(_) => {
