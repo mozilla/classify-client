@@ -15,7 +15,7 @@ impl ClassifyError {
 
     pub fn from_source<S: fmt::Display, E: fmt::Display>(source: S, err: E) -> Self {
         Self {
-            message: format!("{}: {}", source, err),
+            message: format!("{source}: {err}"),
         }
     }
 }
@@ -25,7 +25,7 @@ impl std::error::Error for ClassifyError {}
 
 impl fmt::Display for ClassifyError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{:?}", self)?;
+        write!(formatter, "{self:?}")?;
         Ok(())
     }
 }

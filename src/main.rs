@@ -48,7 +48,7 @@ async fn main() -> Result<(), ClassifyError> {
 
     let metrics = Arc::new(
         metrics::get_client(metrics_target, app_log.clone())
-            .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err)),
+            .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {err}")),
     );
 
     let _guard = sentry::init((
@@ -75,7 +75,7 @@ async fn main() -> Result<(), ClassifyError> {
         version_file,
     };
 
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     slog::info!(app_log, "starting server on https://{}", addr);
 
     actix_web::HttpServer::new(move || {
