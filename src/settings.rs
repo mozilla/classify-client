@@ -124,9 +124,11 @@ mod tests {
 
     #[test]
     fn test_override_via_env_vars() {
-        env::set_var("DEBUG", "true");
-        env::set_var("PORT", "8888");
-        env::set_var("TRUSTED_PROXY_LIST", "2001:db8::/48,192.168.100.14/24");
+        unsafe {
+            env::set_var("DEBUG", "true");
+            env::set_var("PORT", "8888");
+            env::set_var("TRUSTED_PROXY_LIST", "2001:db8::/48,192.168.100.14/24");
+        }
 
         let settings = Settings::load().unwrap();
 
