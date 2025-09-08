@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
-use actix_web::{http, web::Data, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, http, web::Data};
 use chrono::{DateTime, Utc};
 use maxminddb::{self, geoip2};
 use serde::Serializer;
@@ -62,14 +62,13 @@ pub async fn classify_client(
 mod tests {
     use crate::{endpoints::EndpointState, geoip::GeoIp};
     use actix_web::{
-        http,
+        App, http,
         test::{self, TestRequest},
         web::{self, Data},
-        App,
     };
     use chrono::DateTime;
     use maxminddb::geoip2;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use std::{collections::HashSet, sync::Arc};
 
     #[actix_rt::test]

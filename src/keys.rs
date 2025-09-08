@@ -1,4 +1,4 @@
-use serde_json::{from_str, Value};
+use serde_json::{Value, from_str};
 use slog::Logger;
 use std::collections::HashSet;
 use std::fs::read_to_string;
@@ -75,21 +75,23 @@ mod tests {
         // tests
         let missing_set = load(missing_file.clone(), logger.clone());
         assert!(missing_set.is_empty());
-        assert!(logs
-            .lock()
-            .unwrap()
-            .pop()
-            .unwrap()
-            .starts_with("ERRO / Error reading api keys file"));
+        assert!(
+            logs.lock()
+                .unwrap()
+                .pop()
+                .unwrap()
+                .starts_with("ERRO / Error reading api keys file")
+        );
 
         let corrupt_set = load(corrupt_file.clone(), logger.clone());
         assert!(corrupt_set.is_empty());
-        assert!(logs
-            .lock()
-            .unwrap()
-            .pop()
-            .unwrap()
-            .starts_with("ERRO / Error parsing api keys file"));
+        assert!(
+            logs.lock()
+                .unwrap()
+                .pop()
+                .unwrap()
+                .starts_with("ERRO / Error parsing api keys file")
+        );
 
         let good_set = load(good_file.clone(), logger.clone());
         assert!(good_set.len() == 1);

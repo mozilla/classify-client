@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, utils::RequestClientIp};
-use actix_web::{web::Data, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web::Data};
 
 /// Show debugging information about the server comprising:
 ///

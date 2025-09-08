@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError};
-use actix_web::{web::Data, HttpResponse};
+use actix_web::{HttpResponse, web::Data};
 use serde_derive::Serialize;
 use std::{
     fs::File,
@@ -55,10 +55,9 @@ pub async fn version(app_data: Data<EndpointState>) -> HttpResponse {
 mod tests {
     use crate::endpoints::EndpointState;
     use actix_web::{
-        http,
+        App, http,
         test::{self, TestRequest},
         web::{self, Data},
-        App,
     };
 
     #[actix_rt::test]

@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError};
-use actix_web::{web::Data, HttpRequest};
+use actix_web::{HttpRequest, web::Data};
 use std::net::IpAddr;
 
 pub trait RequestClientIp<S> {
@@ -43,13 +43,13 @@ impl<'a> RequestTraceIps<'a> for HttpRequest {
             trace.push(peer_addr.ip());
         }
 
-        if let Some(x_forwarded_for) = self.headers().get("X-Forwarded-For") {
-            if let Ok(header) = x_forwarded_for.to_str() {
-                let mut header_ips: Vec<IpAddr> =
-                    header.split(',').flat_map(|ip| ip.trim().parse()).collect();
-                header_ips.reverse();
-                trace.append(&mut header_ips);
-            }
+        if let Some(x_forwarded_for) = self.headers().get("X-Forwarded-For")
+            && let Ok(header) = x_forwarded_for.to_str()
+        {
+            let mut header_ips: Vec<IpAddr> =
+                header.split(',').flat_map(|ip| ip.trim().parse()).collect();
+            header_ips.reverse();
+            trace.append(&mut header_ips);
         }
 
         trace

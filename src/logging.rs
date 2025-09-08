@@ -1,9 +1,9 @@
 use actix_web::{
+    Error, HttpRequest, HttpResponse,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     web::Data,
-    Error, HttpRequest, HttpResponse,
 };
-use futures::{future, Future, FutureExt};
+use futures::{Future, FutureExt, future};
 use slog::{self, Drain};
 use slog_derive::KV;
 use slog_mozlog_json::MozLogJson;
@@ -132,7 +132,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::logging::MozLogFields;
-    use actix_web::{http, test, HttpResponse};
+    use actix_web::{HttpResponse, http, test};
 
     #[test]
     async fn test_request_fields() {
