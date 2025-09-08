@@ -12,14 +12,14 @@ pub mod settings;
 pub mod utils;
 
 use crate::{
-    endpoints::{canned, classify, country, debug, dockerflow, EndpointState},
+    endpoints::{EndpointState, canned, classify, country, debug, dockerflow},
     errors::ClassifyError,
     geoip::GeoIp,
     settings::Settings,
 };
 use actix_web::{
-    web::{self, Data},
     App,
+    web::{self, Data},
 };
 use std::sync::Arc;
 

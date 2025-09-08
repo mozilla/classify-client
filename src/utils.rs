@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError};
-use actix_web::{web::Data, HttpRequest};
+use actix_web::{HttpRequest, web::Data};
 use std::net::IpAddr;
 
 pub trait RequestClientIp<S> {

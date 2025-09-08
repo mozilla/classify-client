@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ClassifyError, utils::RequestClientIp};
-use actix_web::{http, web::Data, web::Query, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, http, web::Data, web::Query};
 use cadence::prelude::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -114,9 +114,9 @@ pub async fn get_country(
 mod tests {
     use crate::{endpoints::EndpointState, geoip::GeoIp, metrics::tests::TestMetricSink};
     use actix_web::{
+        App,
         test::{self, TestRequest},
         web::{self, Data},
-        App,
     };
     use cadence::StatsdClient;
     use serde_json::{self, json};

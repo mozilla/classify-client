@@ -1,11 +1,11 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError, APP_NAME};
+use crate::{APP_NAME, endpoints::EndpointState, errors::ClassifyError};
 use actix_web::{
+    Error,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     web::Data,
-    Error,
 };
-use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
-use futures::{future, Future, FutureExt};
+use cadence::{BufferedUdpMetricSink, StatsdClient, prelude::*};
+use futures::{Future, FutureExt, future};
 use std::{
     fmt::Display,
     net::{ToSocketAddrs, UdpSocket},
@@ -118,9 +118,9 @@ pub mod tests {
     use super::*;
     use crate::endpoints::EndpointState;
     use actix_web::{
+        App, HttpResponse,
         test::{self, TestRequest},
         web::{self, Data},
-        App, HttpResponse,
     };
     use cadence::StatsdClient;
     use regex::Regex;

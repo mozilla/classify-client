@@ -3,7 +3,7 @@ pub mod classify;
 pub mod country;
 pub mod debug;
 pub mod dockerflow;
-use crate::{geoip::GeoIp, APP_NAME};
+use crate::{APP_NAME, geoip::GeoIp};
 use std::{collections::HashSet, default::Default, path::PathBuf, sync::Arc};
 
 #[derive(Clone, Debug)]

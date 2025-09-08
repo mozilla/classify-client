@@ -1,6 +1,6 @@
 use crate::errors::ClassifyError;
-use cadence::{prelude::*, StatsdClient};
-use maxminddb::{self, geoip2, MaxMindDbError};
+use cadence::{StatsdClient, prelude::*};
+use maxminddb::{self, MaxMindDbError, geoip2};
 use std::{fmt, net::IpAddr, path::PathBuf, sync::Arc};
 
 pub struct GeoIp {
