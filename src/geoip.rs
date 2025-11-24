@@ -13,7 +13,7 @@ impl GeoIp {
         GeoIpBuilder::default()
     }
 
-    pub fn locate(&self, ip: IpAddr) -> Result<Option<geoip2::Country>, ClassifyError> {
+    pub fn locate(&'_ self, ip: IpAddr) -> Result<Option<geoip2::Country<'_>>, ClassifyError> {
         self.reader
             .as_ref()
             .ok_or_else(|| ClassifyError::new("No geoip database available"))?
