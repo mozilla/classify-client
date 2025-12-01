@@ -11,7 +11,7 @@ version = "0.3.0"
 
 [dependencies]
 actix = "^0.13.5"
-actix-web = "^4.12.0"
+actix-web = "^4.12.1"
 actix-rt = "^2"
 cadence = "^1.6.0"
 envy = "^0.4.2"
