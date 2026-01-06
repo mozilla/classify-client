@@ -25,7 +25,7 @@ pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, Cl
         .and_then(|res| match res {
             Some(country_info) => country_info
                 .country
-                .and_then(|country| country.iso_code)
+                .iso_code
                 .map(|iso_code| Ok(!iso_code.is_empty()))
                 .unwrap_or(Ok(false)),
             None => Ok(false),

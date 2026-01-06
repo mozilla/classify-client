@@ -17,13 +17,11 @@ fn country_iso_code<S: Serializer>(
     country_info: &Option<geoip2::Country>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    let iso_code: Option<&str> = country_info
-        .clone()
-        .and_then(|country_info| country_info.country)
-        .and_then(|country| country.iso_code);
-
-    match iso_code {
-        Some(code) => serializer.serialize_str(code),
+    match country_info {
+        Some(x) => match x.country.iso_code {
+            Some(code) => serializer.serialize_str(code),
+            _ => serializer.serialize_none(),
+        },
         None => serializer.serialize_none(),
     }
 }
@@ -78,17 +76,54 @@ mod tests {
         let value = serde_json::to_value(&classification).unwrap();
         assert_eq!(*value.get("country").unwrap(), Value::Null);
 
+        let none_names = geoip2::Names {
+            german: None,
+            english: None,
+            spanish: None,
+            french: None,
+            japanese: None,
+            brazilian_portuguese: None,
+            russian: None,
+            simplified_chinese: None,
+        };
+
         classification.country = Some(geoip2::Country {
-            country: Some(geoip2::country::Country {
+            country: geoip2::country::Country {
                 geoname_id: None,
                 iso_code: Some("US"),
-                names: None,
+                names: geoip2::Names {
+                    german: None,
+                    english: Some("United States of America"),
+                    spanish: None,
+                    french: None,
+                    japanese: None,
+                    brazilian_portuguese: None,
+                    russian: None,
+                    simplified_chinese: None,
+                },
                 is_in_european_union: None,
-            }),
-            continent: None,
-            registered_country: None,
-            represented_country: None,
-            traits: None,
+            },
+            continent: geoip2::country::Continent {
+                code: None,
+                geoname_id: None,
+                names: none_names.clone(),
+            },
+            registered_country: geoip2::city::Country {
+                geoname_id: None,
+                is_in_european_union: None,
+                iso_code: None,
+                names: none_names.clone(),
+            },
+            represented_country: geoip2::city::RepresentedCountry {
+                geoname_id: None,
+                is_in_european_union: None,
+                iso_code: None,
+                names: none_names.clone(),
+                representation_type: None,
+            },
+            traits: geoip2::city::Traits {
+                is_anycast: Some(false),
+            },
         });
 
         let value = serde_json::to_value(&classification).unwrap();
