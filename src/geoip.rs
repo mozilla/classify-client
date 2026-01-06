@@ -1,6 +1,6 @@
 use crate::errors::ClassifyError;
 use cadence::{StatsdClient, prelude::*};
-use maxminddb::{self, MaxMindDbError, geoip2};
+use maxminddb::{self, geoip2};
 use std::{fmt, net::IpAddr, path::PathBuf, sync::Arc};
 
 pub struct GeoIp {
@@ -14,32 +14,25 @@ impl GeoIp {
     }
 
     pub fn locate(&'_ self, ip: IpAddr) -> Result<Option<geoip2::Country<'_>>, ClassifyError> {
-        self.reader
+        let lookup_result = self
+            .reader
             .as_ref()
             .ok_or_else(|| ClassifyError::new("No geoip database available"))?
-            .lookup(ip)
-            .inspect(|country_info: &Option<geoip2::Country>| {
-                // Send a metrics ping about the geolocation result
-                let iso_code = country_info
-                    .clone()
-                    .and_then(|country_info| country_info.country)
-                    .and_then(|country| country.iso_code);
-                self.metrics
-                    .incr_with_tags("location")
-                    .with_tag("country", iso_code.unwrap_or("unknown"))
-                    .send();
-            })
-            .or_else(|err| match err {
-                MaxMindDbError::InvalidNetwork(_) => {
-                    self.metrics
-                        .incr_with_tags("location")
-                        .with_tag("country", "unknown")
-                        .send();
-                    Ok(None)
-                }
-                _ => Err(err),
-            })
-            .map_err(|err| err.into())
+            .lookup(ip);
+        if let Some(country_info) = lookup_result?.decode::<geoip2::Country>()? {
+            // Send a metrics ping about the geolocation result
+            let iso_code = country_info.country.iso_code.unwrap_or("unknown");
+            self.metrics
+                .incr_with_tags("location")
+                .with_tag("country", iso_code)
+                .send();
+            return Ok(Some(country_info));
+        }
+        self.metrics
+            .incr_with_tags("location")
+            .with_tag("country", "unknown")
+            .send();
+        Ok(None)
     }
 }
 
@@ -115,7 +108,7 @@ mod tests {
 
         let ip = "7.7.7.7".parse()?;
         let rv = geoip.locate(ip).unwrap().unwrap();
-        assert_eq!(rv.country.unwrap().iso_code.unwrap(), "US");
+        assert_eq!(rv.country.iso_code.unwrap(), "US");
         Ok(())
     }
 

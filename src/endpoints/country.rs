@@ -75,21 +75,9 @@ pub async fn get_country(
     }
 
     // return country if we can identify it based on IP address
-    state
-        .geoip
-        .locate(req.client_ip()?)
-        .map(move |location| {
-            let country_opt = match location {
-                Some(x) => x.country,
-                None => None,
-            };
-
-            if country_opt.is_none() {
-                let mut response = HttpResponse::NotFound();
-                metrics.incr_with_tags("country_miss").send();
-                return response.json(&COUNTRY_NOT_FOUND_RESPONSE);
-            }
-
+    let country_info = state.geoip.locate(req.client_ip()?);
+    match country_info {
+        Ok(Some(country_info)) => {
             let mut response = HttpResponse::Ok();
             response.append_header((
                 http::header::CACHE_CONTROL,
@@ -98,16 +86,17 @@ pub async fn get_country(
 
             metrics.incr_with_tags("country_hit").send();
 
-            let country = country_opt.unwrap();
-            response.json(CountryResponse {
-                country_code: country.iso_code.unwrap_or_default(),
-                country_name: match country.names {
-                    Some(x) => x["en"],
-                    None => "",
-                },
-            })
-        })
-        .map_err(|err| ClassifyError::from_source("Future failure", err))
+            Ok(response.json(CountryResponse {
+                country_code: country_info.country.iso_code.unwrap_or_default(),
+                country_name: country_info.country.names.english.unwrap_or_default(),
+            }))
+        }
+        _ => {
+            let mut response = HttpResponse::NotFound();
+            metrics.incr_with_tags("country_miss").send();
+            Ok(response.json(&COUNTRY_NOT_FOUND_RESPONSE))
+        }
+    }
 }
 
 #[cfg(test)]
