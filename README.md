@@ -1,6 +1,8 @@
 # Classify Client
 
-This is an optimized version of the classify client endpoint in [Normandy](https://github.com/mozilla/normandy).
+This is an optimized version of the classify client endpoint, originally forked from [Normandy](https://github.com/mozilla/normandy).
+
+This service returns basic information to gecko clients like country code and a timestamp for feature toggling/targetting.
 
 ## Dev instructions
 
@@ -13,10 +15,19 @@ $ cargo run
 
 This project should run on the latest stable version of Rust. Unstable features are not allowed.
 
+## Maintenance instructions
+
+ - Dependabot is setup to run monthly
+   - Major and minor updates will be split into seperate PRs.
+   - Since this is a rust project, breaking changes will occur in patch version changes at times.
+ - Changes will deploy to staging automatically for verification when after merging.
+   - Use a VPN to spot check response accuracy from different locations.
+ - Tagged releases will deploy to prod automatically when releases are created.
+
 ### GeoIP Database
 
 A GeoIP database will need to be provided. By default it is expected to be
-found at `./GeoLite2-Country.mmdb`.
+found at `./GeoLite2-Country.mmdb` by default.
 
 ## Configuration
 
