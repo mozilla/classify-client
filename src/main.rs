@@ -52,13 +52,10 @@ async fn main() -> Result<(), ClassifyError> {
     );
 
     let sentry_opts = sentry::ClientOptions::new()
-      .maybe_release(sentry::release_name!())
-      .environment(sentry_env)
-      .sample_rate(sentry_sample_rate);
-    let _guard = sentry::init((
-        sentry_dsn,
-        sentry_opts
-    ));
+        .maybe_release(sentry::release_name!())
+        .environment(sentry_env)
+        .sample_rate(sentry_sample_rate);
+    let _guard = sentry::init((sentry_dsn, sentry_opts));
 
     let state = EndpointState {
         api_keys_hashset: keys::load(api_keys_file, app_log.clone()),
