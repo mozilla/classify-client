@@ -51,15 +51,11 @@ async fn main() -> Result<(), ClassifyError> {
             .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {err}")),
     );
 
-    let _guard = sentry::init((
-        sentry_dsn,
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            environment: Some(sentry_env.into()),
-            sample_rate: sentry_sample_rate,
-            ..Default::default()
-        },
-    ));
+    let sentry_opts = sentry::ClientOptions::new()
+        .maybe_release(sentry::release_name!())
+        .environment(sentry_env)
+        .sample_rate(sentry_sample_rate);
+    let _guard = sentry::init((sentry_dsn, sentry_opts));
 
     let state = EndpointState {
         api_keys_hashset: keys::load(api_keys_file, app_log.clone()),
